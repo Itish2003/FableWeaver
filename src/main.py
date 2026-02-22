@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depe
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+import asyncio
 import json
 import traceback
 import sys
@@ -20,7 +21,7 @@ from contextlib import asynccontextmanager
 from src.database import get_db, AsyncSessionLocal
 from src.models import Story, History, WorldBible, AdkSession, AdkEvent, BibleSnapshot
 from src.tools.core_tools import get_default_bible_content
-from src.config import make_session_id
+from src.config import make_session_id, get_settings
 
 # --- Logger ---
 class FileLogger:
@@ -2235,135 +2236,176 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
             
             logger.log("runner_start", f"Running agent: {runner.agent.name}", {"action": action, "story_id": story_id})
             print(f"DEBUG: Starting runner for story {story_id} with agent {runner.agent.name}")
-            
-            async with runner:
-                async for event in runner.run_async(
-                    user_id=user_id,
-                    session_id=agent_session_id,
-                    new_message=user_msg
-                ):
-                    # IMPORTANT: Only stream output from the Storyteller agent to the user
-                    # Research agents (lore_hunter, lore_keeper, archivist) run silently
-                    event_author = getattr(event, 'author', '')
-                    # Check for storyteller - handle both exact match and variations
-                    is_storyteller = event_author == "storyteller" or "storyteller" in event_author.lower()
 
-                    # Debug: Log all event authors to track pipeline flow
-                    has_content = bool(getattr(event, 'content', None) or getattr(event, 'text', None))
-                    print(f"EVENT: author='{event_author}' | has_content={has_content} | turn_complete={getattr(event, 'turnComplete', False)}")
+            # Heartbeat task keeps the WebSocket alive and informs the user during long generation
+            settings = get_settings()
+            pipeline_timed_out = False
 
-                    # Detailed debug for storyteller events
-                    if is_storyteller and has_content:
-                        content = getattr(event, 'content', None)
-                        print(f"  STORYTELLER CONTENT TYPE: {type(content)}")
-                        if content:
-                            print(f"  STORYTELLER CONTENT ATTRS: {[a for a in dir(content) if not a.startswith('_')][:10]}")
-                            if hasattr(content, 'parts'):
-                                print(f"  PARTS: {content.parts}")
-                            if hasattr(content, 'text'):
-                                print(f"  TEXT ATTR: {content.text[:100] if content.text else 'None'}...")
+            async def heartbeat():
+                """Send periodic keepalive messages while the pipeline runs."""
+                while True:
+                    await asyncio.sleep(settings.heartbeat_interval_seconds)
+                    if ws_disconnected:
+                        return
+                    try:
+                        await manager.send_json({
+                            "type": "status",
+                            "status": "processing",
+                        }, websocket)
+                    except WebSocketDisconnect:
+                        return
 
-                    text_chunk = ""
-                    if hasattr(event, "text") and event.text:
-                        text_chunk = event.text
-                    else:
-                        content = getattr(event, 'content', None)
-                        if content:
-                            if isinstance(content, str):
-                                text_chunk = content
-                            elif hasattr(content, 'parts') and content.parts:
-                                for part in content.parts:
-                                    if hasattr(part, 'text') and part.text:
-                                        text_chunk += part.text
-                                    elif isinstance(part, str):
-                                        text_chunk += part
-                                    # Handle dict-like parts
-                                    elif isinstance(part, dict) and 'text' in part:
-                                        text_chunk += part['text']
-                            elif hasattr(content, 'text') and content.text:
-                                text_chunk = content.text
-                            # Try model_dump for Pydantic models (GenAI types)
-                            elif hasattr(content, 'model_dump'):
-                                try:
-                                    dumped = content.model_dump()
-                                    if isinstance(dumped, dict) and 'parts' in dumped:
-                                        for part in dumped['parts']:
-                                            if isinstance(part, dict) and 'text' in part:
+            heartbeat_task = asyncio.create_task(heartbeat())
+
+            try:
+                async with asyncio.timeout(settings.pipeline_timeout_seconds):
+                    async with runner:
+                        async for event in runner.run_async(
+                            user_id=user_id,
+                            session_id=agent_session_id,
+                            new_message=user_msg
+                        ):
+                            # IMPORTANT: Only stream output from the Storyteller agent to the user
+                            # Research agents (lore_hunter, lore_keeper, archivist) run silently
+                            event_author = getattr(event, 'author', '')
+                            # Check for storyteller - handle both exact match and variations
+                            is_storyteller = event_author == "storyteller" or "storyteller" in event_author.lower()
+
+                            # Debug: Log all event authors to track pipeline flow
+                            has_content = bool(getattr(event, 'content', None) or getattr(event, 'text', None))
+                            print(f"EVENT: author='{event_author}' | has_content={has_content} | turn_complete={getattr(event, 'turnComplete', False)}")
+
+                            # Detailed debug for storyteller events
+                            if is_storyteller and has_content:
+                                content = getattr(event, 'content', None)
+                                print(f"  STORYTELLER CONTENT TYPE: {type(content)}")
+                                if content:
+                                    print(f"  STORYTELLER CONTENT ATTRS: {[a for a in dir(content) if not a.startswith('_')][:10]}")
+                                    if hasattr(content, 'parts'):
+                                        print(f"  PARTS: {content.parts}")
+                                    if hasattr(content, 'text'):
+                                        print(f"  TEXT ATTR: {content.text[:100] if content.text else 'None'}...")
+
+                            text_chunk = ""
+                            if hasattr(event, "text") and event.text:
+                                text_chunk = event.text
+                            else:
+                                content = getattr(event, 'content', None)
+                                if content:
+                                    if isinstance(content, str):
+                                        text_chunk = content
+                                    elif hasattr(content, 'parts') and content.parts:
+                                        for part in content.parts:
+                                            if hasattr(part, 'text') and part.text:
+                                                text_chunk += part.text
+                                            elif isinstance(part, str):
+                                                text_chunk += part
+                                            # Handle dict-like parts
+                                            elif isinstance(part, dict) and 'text' in part:
                                                 text_chunk += part['text']
-                                except:
-                                    pass
-                            # Fallback to string but be more lenient
+                                    elif hasattr(content, 'text') and content.text:
+                                        text_chunk = content.text
+                                    # Try model_dump for Pydantic models (GenAI types)
+                                    elif hasattr(content, 'model_dump'):
+                                        try:
+                                            dumped = content.model_dump()
+                                            if isinstance(dumped, dict) and 'parts' in dumped:
+                                                for part in dumped['parts']:
+                                                    if isinstance(part, dict) and 'text' in part:
+                                                        text_chunk += part['text']
+                                        except:
+                                            pass
+                                    # Fallback to string but be more lenient
+                                    if not text_chunk:
+                                        s = str(content)
+                                        # Only filter out clearly empty/technical responses
+                                        if s and s != "None" and "parts=None" not in s and s.strip() != "role='model'":
+                                            # Try to extract text from string representation
+                                            if "text='" in s or 'text="' in s:
+                                                matches = re.findall(r"text=['\"]([^'\"]*)['\"]", s)
+                                                if matches:
+                                                    text_chunk = "".join(matches)
+
                             if not text_chunk:
-                                s = str(content)
-                                # Only filter out clearly empty/technical responses
-                                if s and s != "None" and "parts=None" not in s and s.strip() != "role='model'":
-                                    # Try to extract text from string representation
-                                    if "text='" in s or 'text="' in s:
-                                        matches = re.findall(r"text=['\"]([^'\"]*)['\"]", s)
-                                        if matches:
-                                            text_chunk = "".join(matches)
+                                 text_chunk = getattr(event, 'message', "")
 
-                    if not text_chunk:
-                         text_chunk = getattr(event, 'message', "")
+                            # Skip empty or technical-only responses
+                            if text_chunk and ("parts=None" in text_chunk or text_chunk.strip() == "role='model'"):
+                                text_chunk = ""
 
-                    # Skip empty or technical-only responses
-                    if text_chunk and ("parts=None" in text_chunk or text_chunk.strip() == "role='model'"):
-                        text_chunk = ""
+                            if text_chunk:
+                                # Clean technical strings
+                                if isinstance(text_chunk, str) and text_chunk.startswith("parts=["):
+                                     matches = re.findall(r'text="""([\s\S]*?)"""', text_chunk)
+                                     if matches: text_chunk = "".join(matches)
+                                     else:
+                                         matches = re.findall(r"text='([\s\S]*?)'", text_chunk)
+                                         if matches: text_chunk = "".join(matches)
 
-                    if text_chunk:
-                        # Clean technical strings
-                        if isinstance(text_chunk, str) and text_chunk.startswith("parts=["):
-                             matches = re.findall(r'text="""([\s\S]*?)"""', text_chunk)
-                             if matches: text_chunk = "".join(matches)
-                             else:
-                                 matches = re.findall(r"text='([\s\S]*?)'", text_chunk)
-                                 if matches: text_chunk = "".join(matches)
+                                # Only stream Storyteller output to user; accumulate all for logging
+                                if is_storyteller:
+                                    buffer += text_chunk
+                                    logger.log("output_chunk", text_chunk)
+                                    try:
+                                        await manager.send_json({
+                                            "type": "content_delta",
+                                            "text": text_chunk,
+                                            "sender": "storyteller"
+                                        }, websocket)
+                                    except WebSocketDisconnect:
+                                        # Client disconnected during streaming - continue to save chapter
+                                        logger.log("warning", f"WebSocket disconnected during streaming, will still save chapter")
+                                        ws_disconnected = True
+                                elif event_author == "archivist" or "archivist" in event_author.lower():
+                                    # ARCHIVIST STRUCTURED OUTPUT PROCESSING
+                                    # The Archivist outputs a BibleDelta JSON - parse and apply it
+                                    logger.log("archivist_output", f"Received Archivist output: {text_chunk[:500]}...")
+                                    try:
+                                        from src.schemas import BibleDelta
+                                        from src.utils.bible_delta_processor import apply_bible_delta
 
-                        # Only stream Storyteller output to user; accumulate all for logging
-                        if is_storyteller:
-                            buffer += text_chunk
-                            logger.log("output_chunk", text_chunk)
-                            try:
-                                await manager.send_json({
-                                    "type": "content_delta",
-                                    "text": text_chunk,
-                                    "sender": "storyteller"
-                                }, websocket)
-                            except WebSocketDisconnect:
-                                # Client disconnected during streaming - continue to save chapter
-                                logger.log("warning", f"WebSocket disconnected during streaming, will still save chapter")
-                                ws_disconnected = True
-                        elif event_author == "archivist" or "archivist" in event_author.lower():
-                            # ARCHIVIST STRUCTURED OUTPUT PROCESSING
-                            # The Archivist outputs a BibleDelta JSON - parse and apply it
-                            logger.log("archivist_output", f"Received Archivist output: {text_chunk[:500]}...")
-                            try:
-                                from src.schemas import BibleDelta
-                                from src.utils.bible_delta_processor import apply_bible_delta
+                                        # Try to parse the output as JSON
+                                        delta_json = json.loads(text_chunk)
+                                        delta = BibleDelta(**delta_json)
 
-                                # Try to parse the output as JSON
-                                delta_json = json.loads(text_chunk)
-                                delta = BibleDelta(**delta_json)
-
-                                # Apply the delta to the Bible
-                                result = await apply_bible_delta(story_id, delta)
-                                if result["success"]:
-                                    logger.log("archivist_applied", f"Applied {len(result['updates_applied'])} Bible updates: {result['updates_applied']}")
+                                        # Apply the delta to the Bible
+                                        result = await apply_bible_delta(story_id, delta)
+                                        if result["success"]:
+                                            logger.log("archivist_applied", f"Applied {len(result['updates_applied'])} Bible updates: {result['updates_applied']}")
+                                        else:
+                                            logger.log("archivist_error", f"Failed to apply delta: {result['errors']}")
+                                    except json.JSONDecodeError as e:
+                                        logger.log("archivist_json_error", f"Failed to parse Archivist JSON: {e}")
+                                    except Exception as e:
+                                        logger.log("archivist_error", f"Error processing Archivist output: {e}")
                                 else:
-                                    logger.log("archivist_error", f"Failed to apply delta: {result['errors']}")
-                            except json.JSONDecodeError as e:
-                                logger.log("archivist_json_error", f"Failed to parse Archivist JSON: {e}")
-                            except Exception as e:
-                                logger.log("archivist_error", f"Error processing Archivist output: {e}")
-                        else:
-                            # Log research agent output for debugging but don't send to user
-                            logger.log("research_output", f"[{event_author}] {text_chunk[:200]}...")
-                           
+                                    # Log research agent output for debugging but don't send to user
+                                    logger.log("research_output", f"[{event_author}] {text_chunk[:200]}...")
+
+            except TimeoutError:
+                pipeline_timed_out = True
+                timeout_mins = settings.pipeline_timeout_seconds / 60
+                logger.log("timeout", f"Pipeline timed out after {timeout_mins:.0f}m for story {story_id}", {"action": action})
+                if not ws_disconnected:
+                    try:
+                        await manager.send_json({
+                            "type": "error",
+                            "message": f"Generation timed out after {timeout_mins:.0f} minutes. Any partial output has been saved. Please try again."
+                        }, websocket)
+                    except WebSocketDisconnect:
+                        ws_disconnected = True
+            finally:
+                heartbeat_task.cancel()
+                try:
+                    await heartbeat_task
+                except asyncio.CancelledError:
+                    pass
+
             # End of turn - Save to DB
             logger.log("turn_end", f"Turn complete for story {story_id}")
 
-            # Check for empty/failed output
-            if not buffer or len(buffer.strip()) < 100:
+            # Check for empty/failed output (skip if we already sent a timeout error)
+            if not pipeline_timed_out and (not buffer or len(buffer.strip()) < 100):
                 logger.log("warning", f"Storyteller produced minimal output ({len(buffer)} chars). This could mean the Storyteller agent didn't produce text or only made tool calls.", {"story_id": story_id, "action": action})
                 # Send error message to user if completely empty (only if still connected)
                 if not buffer and not ws_disconnected:
