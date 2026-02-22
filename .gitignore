@@ -1,0 +1,62 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and simulations
+*.log
+simulation_log.json
+runner_dirs.txt
+server.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Node (root-level artifacts)
+node_modules/
+package-lock.json
+
+# Database / Alembic
+*.db
+*.sqlite3
+
+# Playwright
+playwright-report/
+test-results/
+
+# Claude Code (local settings)
+.claude/
+
+# Generated content / stubs
+judgin.md
+main.py
+
+# Misc
+=1.18.0
