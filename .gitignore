@@ -51,6 +51,9 @@ package-lock.json
 playwright-report/
 test-results/
 
+# Prompt test results (generated)
+scripts/test_results/
+
 # Claude Code (local settings)
 .claude/
 
