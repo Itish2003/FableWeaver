@@ -286,7 +286,8 @@ class BibleTools:
                     with open(BIBLE_PATH, 'w') as f:
                         json.dump(data, f, indent=2)
                 except Exception as e:
-                    print(f"Warning: Failed to sync bible to disk: {e}")
+                    import logging
+                    logging.getLogger("fable.core_tools").warning("Failed to sync bible to disk: %s", e)
 
                 return f"Successfully updated '{key}'."
             except Exception as e:
