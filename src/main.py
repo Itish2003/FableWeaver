@@ -853,7 +853,7 @@ async def reset_story_session(story_id: str, db: AsyncSession = Depends(get_db))
 
     # Also clear the session record if it exists
     session_result = await db.execute(
-        select(AdkSession).where(AdkSession.id == agent_session_id)
+        select(AdkSession).where(AdkSession.adk_session_id == agent_session_id)
     )
     session = session_result.scalar_one_or_none()
     if session:
@@ -1968,7 +1968,7 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
 
                         # Also clear the session record
                         session_result = await db.execute(
-                            select(AdkSession).where(AdkSession.id == agent_session_id)
+                            select(AdkSession).where(AdkSession.adk_session_id == agent_session_id)
                         )
                         session = session_result.scalar_one_or_none()
                         if session:
