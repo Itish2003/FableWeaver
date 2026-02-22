@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -38,6 +40,13 @@ class Settings(BaseSettings):
     # ReflectAndRetryToolPlugin retry count for tool failures
     tool_retry_max_attempts: int = 3
 
+    @property
+    def database_url_sync(self) -> str:
+        """Convert async DB URL to sync for ADK's DatabaseSessionService."""
+        return self.database_url.replace(
+            "postgresql+asyncpg://", "postgresql+psycopg2://"
+        )
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 @lru_cache
@@ -48,3 +57,16 @@ def make_session_id(story_id: str) -> str:
     """Build the ADK session ID for a given story."""
     settings = get_settings()
     return f"{settings.session_id_prefix}_{story_id}"
+
+
+_session_service = None
+
+
+def get_session_service():
+    """Return a cached ADK DatabaseSessionService instance."""
+    global _session_service
+    if _session_service is None:
+        from google.adk.sessions import DatabaseSessionService
+        settings = get_settings()
+        _session_service = DatabaseSessionService(db_url=settings.database_url_sync)
+    return _session_service
