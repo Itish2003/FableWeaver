@@ -2425,7 +2425,27 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
                 choices_json = parsed.get("choices")
                 summary_text = parsed.get("summary")
                 questions_json = parsed.get("questions")
-            
+
+            # --- Truncation detection ---
+            # If the buffer has substantial narrative (>2000 chars) but no JSON
+            # metadata could be extracted, the output was likely truncated by
+            # the max_output_tokens limit before the JSON block was emitted.
+            if buffer and len(buffer.strip()) > 2000 and parsed is None:
+                logger.log("truncation_warning",
+                           f"Possible output truncation: {len(buffer)} chars but no JSON metadata found. "
+                           f"Tail: {buffer[-200:]}")
+                if not ws_disconnected:
+                    try:
+                        await manager.send_json({
+                            "type": "content_delta",
+                            "text": "\n\n⚠️ **Note**: This chapter may have been cut short by a token limit. "
+                                    "Choices and summary could not be extracted. You can continue "
+                                    "the story by typing what happens next.\n",
+                            "sender": "system"
+                        }, websocket)
+                    except WebSocketDisconnect:
+                        ws_disconnected = True
+
             # Save History Item (Story History)
             async with AsyncSessionLocal() as db:
                 # 1. Save Structured History (Chapter)
