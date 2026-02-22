@@ -41,6 +41,7 @@ from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.runners import InMemoryRunner, Runner
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.plugins import ReflectAndRetryToolPlugin
 from src.services.adk_service import FableSessionService
 from google.genai import types
 
@@ -2217,17 +2218,26 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
                 continue
 
             # FRESH RUNNER for this action to ensure agent pipeline is picked up
+            settings = get_settings()
             runner = Runner(
                 agent=active_agent,
                 app_name="agents",
                 session_service=session_service,
                 memory_service=memory_service,
-                artifact_service=artifact_service
+                artifact_service=artifact_service,
+                plugins=[ReflectAndRetryToolPlugin(max_retries=settings.tool_retry_max_attempts)],
             )
+
+            # State seeded into the session via run_async(state_delta=...) so
+            # callbacks can read story_id and pipeline type.
+            _callback_state_delta = {
+                "story_id": story_id,
+                "_pipeline_type": "init" if action == "init" else "game",
+            }
 
             # Run the Pipeline
             await manager.send_json({"type": "status", "status": "processing"}, websocket)
-            
+
             full_text = ""
             buffer = ""
             ws_disconnected = False  # Track if client disconnected during streaming
@@ -2236,15 +2246,10 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
             # We construct Content object
             user_msg = types.Content(parts=[types.Part(text=input_text)], role="user")
             
-            # RE-SYNC: Ensure the runner is using the latest agent if it was changed
-            # Actually, we'll recreate the runner here or just set it to be sure.
-            # In some ADK versions, the runner is stale if agent is reassigned.
-            
             logger.log("runner_start", f"Running agent: {runner.agent.name}", {"action": action, "story_id": story_id})
             _logger.debug("Starting runner for story=%s agent=%s", story_id, runner.agent.name)
 
             # Heartbeat task keeps the WebSocket alive and informs the user during long generation
-            settings = get_settings()
             pipeline_timed_out = False
 
             async def heartbeat():
@@ -2266,16 +2271,31 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
             try:
                 async with asyncio.timeout(settings.pipeline_timeout_seconds):
                     async with runner:
+                        last_event_author = None
                         async for event in runner.run_async(
                             user_id=user_id,
                             session_id=agent_session_id,
-                            new_message=user_msg
+                            new_message=user_msg,
+                            state_delta=_callback_state_delta,
                         ):
                             # IMPORTANT: Only stream output from the Storyteller agent to the user
                             # Research agents (lore_hunter, lore_keeper, archivist) run silently
                             event_author = getattr(event, 'author', '')
                             # Check for storyteller - handle both exact match and variations
                             is_storyteller = event_author == "storyteller" or "storyteller" in event_author.lower()
+
+                            # Agent transition → send WebSocket progress
+                            if event_author and event_author != last_event_author and not ws_disconnected:
+                                if last_event_author is not None:
+                                    try:
+                                        await manager.send_json({
+                                            "type": "status",
+                                            "status": "processing",
+                                            "detail": f"{event_author} starting...",
+                                        }, websocket)
+                                    except WebSocketDisconnect:
+                                        ws_disconnected = True
+                                last_event_author = event_author
 
                             # Log pipeline event flow
                             has_content = bool(getattr(event, 'content', None) or getattr(event, 'text', None))
