@@ -2,6 +2,7 @@ import os
 import time
 import itertools
 from dotenv import load_dotenv
+from src.config import get_settings
 
 load_dotenv()
 
@@ -43,7 +44,9 @@ class KeyRotator:
         time.sleep(wait_time)
         return best_key
 
-    def mark_exhausted(self, key: str, duration: int = 60):
+    def mark_exhausted(self, key: str, duration: int = None):
+        if duration is None:
+            duration = get_settings().key_cooldown_seconds
         print(f"[KeyRotator] Marking key {key[:8]}... as exhausted for {duration}s.")
         self._cooldowns[key] = time.time() + duration
 

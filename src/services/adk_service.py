@@ -13,7 +13,7 @@ from google.adk.events.event import Event
 from google.genai import types
 
 from src.database import AsyncSessionLocal
-from src.models import AdkSession, AdkEvent, AdkAppState, AdkUserState
+from src.models import AdkSession, AdkEvent
 
 logger = logging.getLogger(__name__)
 

@@ -278,7 +278,7 @@ trigger_research("Winslow High School Brockton Bay layout students")
 
 **CHAPTER STRUCTURE:**
 - Write EXACTLY ONE (1) chapter
-- Length: **6000-8000 words** (aim for rich, detailed prose - this is MANDATORY)
+- Length: **{settings.chapter_min_words}-{settings.chapter_max_words} words** (aim for rich, detailed prose - this is MANDATORY)
 - **START with chapter header**: Begin your narrative with "# Chapter X" where X is the chapter number
   - Get current chapter number by counting existing chapters in history + 1
   - If this is the first chapter, use "# Chapter 1"
@@ -464,7 +464,7 @@ Output your chapter in this EXACT format:
 
 # Chapter X
 
-[Your narrative text here - 6000-8000 words of immersive storytelling...]
+[Your narrative text here - {settings.chapter_min_words}-{settings.chapter_max_words} words of immersive storytelling...]
 
 ```json
 {{
