@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     chapter_min_words: int = 6000
     chapter_max_words: int = 8000
 
+    # Pipeline timeout in seconds (default 5 minutes)
+    pipeline_timeout_seconds: int = 300
+
+    # Heartbeat interval during generation (seconds)
+    heartbeat_interval_seconds: int = 15
+
     # ADK session ID prefix for story sessions
     session_id_prefix: str = "session"
 
