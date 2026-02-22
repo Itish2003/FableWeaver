@@ -24,20 +24,18 @@ from src.tools.core_tools import get_default_bible_content
 from src.config import make_session_id, get_settings
 
 # --- Logger ---
-class FileLogger:
-    def __init__(self, filename="server.log"):
-        self.filename = filename
-    
-    def log(self, type, message, metadata=None):
-        log_entry = {
-            "type": type,
-            "message": message,
-            "metadata": metadata
-        }
-        with open(self.filename, "a") as f:
-            f.write(json.dumps(log_entry) + "\n")
+from src.utils.logging_config import get_logger, StoryAdapter
 
-logger = FileLogger()
+_logger = get_logger("fable.main")
+
+
+class _LegacyLoggerShim:
+    """Thin shim so existing ``logger.log(type, msg, meta)`` calls keep working
+    while we migrate them to stdlib calls incrementally."""
+    def log(self, event_type: str, message: str, metadata=None):
+        _logger.info(message, extra={"event_type": event_type, "metadata": metadata})
+
+logger = _LegacyLoggerShim()
 
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.runners import InMemoryRunner, Runner
@@ -459,7 +457,7 @@ async def build_init_pipeline(story_id: str, universes: List[str], deviation: st
     # 0. Query Planner - Analyze input to generate targeted research topics
     # This detects crossover powers (e.g., "Amon's powers from LOTM") and ensures
     # dedicated researchers are spawned for each power source.
-    print(f"[Pipeline] Running Query Planner for story {story_id}...")
+    _logger.info("Running Query Planner", extra={"story_id": story_id})
     research_topics = await plan_research_queries(universes, deviation, user_input)
 
     # 1. Research Swarm - Now uses dynamically generated topics from Query Planner
@@ -1195,7 +1193,7 @@ async def delete_last_events_from_session(session_service: FableSessionService, 
 @app.websocket("/ws/{story_id}")
 async def websocket_endpoint(websocket: WebSocket, story_id: str):
     await manager.connect(websocket)
-    print(f"New WebSocket connection for story: {story_id}")
+    _logger.info("WebSocket connected", extra={"story_id": story_id})
     
     # 1. Verify Story Exists
     async with AsyncSessionLocal() as db:
@@ -1261,8 +1259,7 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
             inner_data = payload.get("payload", {})
             
             logger.log("input", f"Action: {action} (Story: {story_id})", payload)
-            print(f"Received action: {action} for Story: {story_id}")
-            print(f"DEBUG: Inner data: {inner_data}")
+            _logger.debug("Received action=%s for story=%s payload=%s", action, story_id, inner_data)
             
             pipeline = None
             input_text = ""
@@ -1326,7 +1323,7 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
                 universes = inner_data.get("universes", ["General"])
                 deviation = inner_data.get("timeline_deviation", "")
 
-                print(f"DEBUG: Universes for story {story_id}: {universes}")
+                _logger.debug("Universes for story=%s: %s", story_id, universes)
 
                 # Store universes in World Bible meta for later retrieval
                 async with AsyncSessionLocal() as db:
@@ -2244,7 +2241,7 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
             # In some ADK versions, the runner is stale if agent is reassigned.
             
             logger.log("runner_start", f"Running agent: {runner.agent.name}", {"action": action, "story_id": story_id})
-            print(f"DEBUG: Starting runner for story {story_id} with agent {runner.agent.name}")
+            _logger.debug("Starting runner for story=%s agent=%s", story_id, runner.agent.name)
 
             # Heartbeat task keeps the WebSocket alive and informs the user during long generation
             settings = get_settings()
@@ -2280,20 +2277,12 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
                             # Check for storyteller - handle both exact match and variations
                             is_storyteller = event_author == "storyteller" or "storyteller" in event_author.lower()
 
-                            # Debug: Log all event authors to track pipeline flow
+                            # Log pipeline event flow
                             has_content = bool(getattr(event, 'content', None) or getattr(event, 'text', None))
-                            print(f"EVENT: author='{event_author}' | has_content={has_content} | turn_complete={getattr(event, 'turnComplete', False)}")
-
-                            # Detailed debug for storyteller events
-                            if is_storyteller and has_content:
-                                content = getattr(event, 'content', None)
-                                print(f"  STORYTELLER CONTENT TYPE: {type(content)}")
-                                if content:
-                                    print(f"  STORYTELLER CONTENT ATTRS: {[a for a in dir(content) if not a.startswith('_')][:10]}")
-                                    if hasattr(content, 'parts'):
-                                        print(f"  PARTS: {content.parts}")
-                                    if hasattr(content, 'text'):
-                                        print(f"  TEXT ATTR: {content.text[:100] if content.text else 'None'}...")
+                            _logger.debug(
+                                "ADK event: author=%s has_content=%s turn_complete=%s",
+                                event_author, has_content, getattr(event, 'turnComplete', False),
+                            )
 
                             text_chunk = ""
                             if hasattr(event, "text") and event.text:
@@ -2508,11 +2497,11 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
 
             if ws_disconnected:
                 manager.disconnect(websocket)
-                print(f"WebSocket disconnected for story: {story_id} (chapter saved successfully)")
+                _logger.info("WebSocket disconnected (chapter saved)", extra={"story_id": story_id})
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        print(f"WebSocket disconnected for story: {story_id} (before chapter generation completed)")
+        _logger.info("WebSocket disconnected (mid-generation)", extra={"story_id": story_id})
     except Exception as e:
-        traceback.print_exc()
+        _logger.exception("Unhandled error in WebSocket handler", extra={"story_id": story_id})
         await manager.send_json({"type": "error", "message": str(e)}, websocket)

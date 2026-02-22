@@ -1,8 +1,13 @@
-from google.genai import Client as GenAIClient
 import asyncio
+import logging
 import time
+
+from google.genai import Client as GenAIClient
+
 from src.utils.auth import get_api_key, mark_key_exhausted
 from src.config import get_settings
+
+logger = logging.getLogger("fable.resilient_client")
 
 class ResilientClient(GenAIClient):
     """
@@ -30,7 +35,7 @@ class ResilientClient(GenAIClient):
         # Mark the current key as exhausted before getting a new one
         mark_key_exhausted(self._current_key)
         
-        print(f"\n!! [ResilientClient] Rotating API Key. Old key: {self._current_key[:8]}... !!\n")
+        logger.info("Rotating API key. Old key: %s...", self._current_key[:8])
         self._current_key = get_api_key()
         self._active_client = GenAIClient(api_key=self._current_key, http_options=self._http_options, **self._kwargs)
 
@@ -123,7 +128,7 @@ class ModelsProxy:
             # (Gemini doesn't allow empty contents in history)
 
         if total_parts_before != total_parts_after:
-            print(f"DEBUG: [Sanitization] Stripped {total_parts_before - total_parts_after} empty parts. (Before: {total_parts_before}, After: {total_parts_after})")
+            logger.debug("Sanitization: stripped %d empty parts (%d -> %d)", total_parts_before - total_parts_after, total_parts_before, total_parts_after)
         
         kwargs["contents"] = new_contents
         return kwargs
@@ -152,7 +157,7 @@ class ModelsProxy:
                     if is_rate_limit or is_server_overload:
                         delay = base_delay * (2 ** attempt)
                         error_type = "429 Rate Limit" if is_rate_limit else "503 Server Overload"
-                        print(f"\n[ResilientClient] {error_type} for {method_name}. Attempt {attempt+1}/{retries}. Backoff: {delay}s")
+                        logger.warning("%s for %s. Attempt %d/%d. Backoff: %ds", error_type, method_name, attempt + 1, retries, delay)
                         if is_rate_limit:
                             self._parent.rotate()  # Only rotate keys on rate limit, not overload
                         await asyncio.sleep(delay)
@@ -203,7 +208,7 @@ class LiveProxy:
 
                     if is_rate_limit or is_server_overload:
                         error_type = "429 Rate Limit" if is_rate_limit else "503 Server Overload"
-                        print(f"[ResilientClient] {error_type} - Retry {attempt+1}/{retries} for Live Connect...")
+                        logger.warning("%s - Retry %d/%d for Live Connect", error_type, attempt + 1, retries)
                         if is_rate_limit:
                             self._parent.rotate()
                         await asyncio.sleep(2 ** attempt)  # Exponential backoff

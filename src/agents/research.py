@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import json
@@ -13,6 +14,8 @@ from src.utils.resilient_client import ResilientClient
 from src.utils.resilient_gemini import ResilientGemini
 from src.tools.core_tools import BibleTools
 from src.config import get_settings
+
+logger = logging.getLogger("fable.research")
 
 
 # --- Query Planner ---
@@ -111,7 +114,7 @@ IMPORTANT:
 
 Return ONLY the JSON array, no other text."""
 
-    print(f"[QueryPlanner] Analyzing input to generate research topics...")
+    logger.info("QueryPlanner: analyzing input to generate research topics")
 
     try:
         response = await client.aio.models.generate_content(
@@ -129,19 +132,18 @@ Return ONLY the JSON array, no other text."""
 
         topics = json.loads(response_text)
 
-        print(f"[QueryPlanner] Generated {len(topics)} research topics:")
+        logger.info("QueryPlanner: generated %d research topics", len(topics))
         for i, topic in enumerate(topics, 1):
-            print(f"  {i}. [{topic.get('universe', 'Unknown')}] {topic.get('focus', 'No focus')}")
+            logger.debug("  %d. [%s] %s", i, topic.get('universe', 'Unknown'), topic.get('focus', 'No focus'))
 
         return topics
 
     except json.JSONDecodeError as e:
-        print(f"[QueryPlanner] Failed to parse JSON response: {e}")
-        print(f"[QueryPlanner] Raw response: {response_text[:500]}...")
+        logger.warning("QueryPlanner: failed to parse JSON response: %s | raw: %.500s", e, response_text)
         # Fallback to default topics if parsing fails
         return _generate_default_topics(universes)
     except Exception as e:
-        print(f"[QueryPlanner] Error during query planning: {e}")
+        logger.exception("QueryPlanner: error during query planning")
         return _generate_default_topics(universes)
 
 
@@ -280,7 +282,7 @@ IMPORTANT:
 
 Return ONLY the JSON array, no other text."""
 
-    print(f"[MidstreamPlanner] Breaking query into focused topics: {query[:100]}...")
+    logger.info("MidstreamPlanner: breaking query into focused topics: %.100s", query)
 
     try:
         response = await client.aio.models.generate_content(
@@ -298,18 +300,18 @@ Return ONLY the JSON array, no other text."""
 
         topics = json.loads(response_text)
 
-        print(f"[MidstreamPlanner] Generated {len(topics)} focused topics:")
+        logger.info("MidstreamPlanner: generated %d focused topics", len(topics))
         for i, topic in enumerate(topics, 1):
-            print(f"  {i}. [{topic.get('universe', 'Unknown')}] {topic.get('focus', 'No focus')}")
+            logger.debug("  %d. [%s] %s", i, topic.get('universe', 'Unknown'), topic.get('focus', 'No focus'))
 
         return topics
 
     except json.JSONDecodeError as e:
-        print(f"[MidstreamPlanner] Failed to parse JSON response: {e}")
+        logger.warning("MidstreamPlanner: failed to parse JSON response: %s", e)
         # Fallback: return the original query as a single topic
         return [{"query": query, "focus": query, "universe": "General"}]
     except Exception as e:
-        print(f"[MidstreamPlanner] Error during query planning: {e}")
+        logger.exception("MidstreamPlanner: error during query planning")
         return [{"query": query, "focus": query, "universe": "General"}]
 
 
@@ -320,7 +322,7 @@ async def scrape_url(url: str) -> str:
     Scrapes the text content from a specific URL.
     Use this to read the details of a page found via search or provided by the user.
     """
-    print(f"[Tool] Scraping URL: {url}")
+    logger.info("Scraping URL: %s", url)
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -414,7 +416,7 @@ def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[
                 "universe": universe
             })
 
-    print(f"DEBUG: Creating Lore Hunter Swarm for {len(research_topics)} topics")
+    logger.debug("Creating Lore Hunter Swarm for %d topics", len(research_topics))
 
     for topic_data in research_topics:
         # Handle both old format (string) and new format (dict)
@@ -430,7 +432,7 @@ def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[
         settings = get_settings()
 
         agent_name = f"researcher_{re.sub(r'[^a-zA-Z0-9_]', '_', focus)[:50].strip('_')}"
-        print(f"DEBUG: Initializing sub-agent: {agent_name} focused on '{focus}'")
+        logger.debug("Initializing sub-agent: %s focused on '%s'", agent_name, focus)
 
         agent = Agent(
             model=ResilientGemini(model=settings.model_research),

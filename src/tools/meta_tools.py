@@ -22,7 +22,9 @@ class MetaTools:
             depth: "quick" for single-agent research, "deep" for multi-agent parallel research
             universes: List of story universes for context (used in deep mode)
         """
-        print(f"DEBUG: MetaTools.trigger_research called for topic: {topic} (depth={depth})")
+        import logging
+        _meta_logger = logging.getLogger("fable.meta_tools")
+        _meta_logger.debug("MetaTools.trigger_research called for topic: %s (depth=%s)", topic, depth)
         from src.main import logger  # Local import to avoid circular dep if any
 
         # Query sanitization: Detect and clean log message contamination
