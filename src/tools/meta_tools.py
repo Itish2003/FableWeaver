@@ -25,7 +25,7 @@ class MetaTools:
         import logging
         _meta_logger = logging.getLogger("fable.meta_tools")
         _meta_logger.debug("MetaTools.trigger_research called for topic: %s (depth=%s)", topic, depth)
-        from src.main import logger  # Local import to avoid circular dep if any
+        from src.utils.legacy_logger import logger
 
         # Query sanitization: Detect and clean log message contamination
         contamination_patterns = [
