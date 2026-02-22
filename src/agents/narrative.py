@@ -1,14 +1,10 @@
 import json
 from typing import Dict, Any, List, Optional
 from google.adk import Agent
-from google.genai import Client, types
-from src.utils.auth import get_api_key
+from google.genai import types
 from src.tools.meta_tools import MetaTools
 from src.config import get_settings
-
-import os
-
-# Paths
+from src.utils.resilient_gemini import ResilientGemini
 from src.tools.core_tools import BibleTools
 
 
@@ -18,9 +14,6 @@ def create_storyteller(story_id: str, model_name: str = None, universes: List[st
     settings = get_settings()
     model_name = model_name or settings.model_storyteller
 
-    key = get_api_key()
-    os.environ["GOOGLE_API_KEY"] = key
-
     bible = BibleTools(story_id)
     meta = MetaTools(story_id)
 
@@ -28,7 +21,7 @@ def create_storyteller(story_id: str, model_name: str = None, universes: List[st
 
     return Agent(
         name="storyteller",
-        model=model_name,
+        model=ResilientGemini(model=model_name),
         generate_content_config=types.GenerateContentConfig(
             max_output_tokens=settings.storyteller_max_output_tokens,
         ),
@@ -569,14 +562,11 @@ def create_archivist(story_id: str) -> Agent:
 
     settings = get_settings()
 
-    key = get_api_key()
-    os.environ["GOOGLE_API_KEY"] = key
-
     # NOTE: No BibleTools needed - output_schema disables tools, Bible state is passed in prompt
 
     return Agent(
         name="archivist",
-        model=settings.model_archivist,
+        model=ResilientGemini(model=settings.model_archivist),
         output_schema=BibleDelta,  # Enforces structured output
         output_key="bible_delta",  # Saves to session state for retrieval
         # NOTE: No tools - output_schema disables all tools. Bible state is passed in prompt.
