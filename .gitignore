@@ -56,7 +56,7 @@ test-results/
 
 # Generated content / stubs
 judgin.md
-main.py
+/main.py
 
 # Misc
 =1.18.0

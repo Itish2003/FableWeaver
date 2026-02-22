@@ -11,8 +11,27 @@ class Settings(BaseSettings):
     model_archivist: str = "gemini-2.5-flash"    # World Bible state updates
     model_research: str = "gemini-2.5-flash"     # Research/Lore agents
 
+    # Resilient client retry settings
+    resilient_max_retries: int = 10
+    resilient_base_delay: int = 2  # seconds, used with exponential backoff
+
+    # API key cooldown after exhaustion
+    key_cooldown_seconds: int = 60
+
+    # Storyteller chapter length guidance
+    chapter_min_words: int = 6000
+    chapter_max_words: int = 8000
+
+    # ADK session ID prefix for story sessions
+    session_id_prefix: str = "session"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 @lru_cache
 def get_settings():
     return Settings()
+
+def make_session_id(story_id: str) -> str:
+    """Build the ADK session ID for a given story."""
+    settings = get_settings()
+    return f"{settings.session_id_prefix}_{story_id}"

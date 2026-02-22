@@ -126,22 +126,3 @@ class AdkEvent(Base):
         UniqueConstraint("adk_event_id", "app_name", "user_id", "adk_session_id", name="uix_adk_event"),
     )
 
-class AdkAppState(Base):
-    __tablename__ = "adk_app_states"
-    
-    app_name: Mapped[str] = mapped_column(String(128), primary_key=True)
-    state: Mapped[dict] = mapped_column(JSON, default=dict)
-    update_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-class AdkUserState(Base):
-    __tablename__ = "adk_user_states"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    app_name: Mapped[str] = mapped_column(String(128))
-    user_id: Mapped[str] = mapped_column(String(128))
-    state: Mapped[dict] = mapped_column(JSON, default=dict)
-    update_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    __table_args__ = (
-        UniqueConstraint("app_name", "user_id", name="uix_adk_user_state"),
-    )

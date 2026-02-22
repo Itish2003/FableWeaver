@@ -2,6 +2,7 @@ from google.genai import Client as GenAIClient
 import asyncio
 import time
 from src.utils.auth import get_api_key, mark_key_exhausted
+from src.config import get_settings
 
 class ResilientClient(GenAIClient):
     """
@@ -133,8 +134,9 @@ class ModelsProxy:
             if method_name in ["generate_content", "generate_content_stream"]:
                 kwargs = self._sanitize_request_arguments(kwargs)
                 
-            retries = 10
-            base_delay = 2
+            settings = get_settings()
+            retries = settings.resilient_max_retries
+            base_delay = settings.resilient_base_delay
             for attempt in range(retries):
                 try:
                     # Always get the FRESH method from active client
@@ -184,7 +186,8 @@ class LiveProxy:
         @asynccontextmanager
         async def wrapper(*args, **kwargs):
              # We can try to connect. If fails 429, rotate and try again.
-            retries = 10
+            settings = get_settings()
+            retries = settings.resilient_max_retries
             for attempt in range(retries):
                 try:
                     current_client = self._parent._active_client
