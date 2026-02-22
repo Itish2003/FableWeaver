@@ -8,6 +8,8 @@ from .world_bible_schemas import (
     StakesTracking,
     TimelineEvent,
     ButterflyEffect,
+    # Storyteller output schema
+    ChapterMetadata,
     # Archivist output schema
     BibleDelta,
     RelationshipUpdate,
@@ -26,6 +28,8 @@ __all__ = [
     "StakesTracking",
     "TimelineEvent",
     "ButterflyEffect",
+    # Storyteller output schema
+    "ChapterMetadata",
     # Archivist output schema
     "BibleDelta",
     "RelationshipUpdate",

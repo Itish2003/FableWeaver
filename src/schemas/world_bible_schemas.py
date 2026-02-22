@@ -166,6 +166,29 @@ class StakesTracking(BaseModel):
 
 
 
+# =============================================================================
+#                  STORYTELLER OUTPUT SCHEMA (ChapterMetadata)
+# =============================================================================
+
+class ChapterMetadata(BaseModel):
+    """
+    Validated schema for the JSON metadata block the Storyteller appends
+    after the narrative text in each chapter.
+
+    All fields except ``summary`` are optional so that partial but usable
+    metadata is never rejected outright.
+    """
+    summary: str = Field(..., description="5-10 sentence chapter summary")
+    choices: List[str] = Field(default_factory=list, description="Player choices for next chapter")
+    choice_timeline_notes: Optional[Dict[str, Any]] = Field(default=None, description="Per-choice timeline impact notes")
+    timeline: Optional[Dict[str, Any]] = Field(default=None, description="Chapter timeline data (start/end dates, canon events, divergences)")
+    canon_elements_used: List[str] = Field(default_factory=list, description="Canon facts referenced in chapter")
+    power_limitations_shown: List[str] = Field(default_factory=list, description="Power limitations demonstrated")
+    stakes_tracking: Optional[Dict[str, Any]] = Field(default=None, description="Costs, near misses, consequences, power debt")
+    character_voices_used: List[str] = Field(default_factory=list, description="Characters who spoke in chapter")
+    questions: Optional[List[str]] = Field(default=None, description="Optional clarifying questions for next turn")
+
+
 # Schema field mappings for legacy format conversion
 LEGACY_FIELD_MAPPINGS = {
     "near_misses": {
