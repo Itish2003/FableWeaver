@@ -1,7 +1,7 @@
 import json
 from typing import Dict, Any, List, Optional
 from google.adk import Agent
-from google.genai import Client
+from google.genai import Client, types
 from src.utils.auth import get_api_key
 from src.tools.meta_tools import MetaTools
 from src.config import get_settings
@@ -29,6 +29,9 @@ def create_storyteller(story_id: str, model_name: str = None, universes: List[st
     return Agent(
         name="storyteller",
         model=model_name,
+        generate_content_config=types.GenerateContentConfig(
+            max_output_tokens=settings.storyteller_max_output_tokens,
+        ),
         tools=[
             bible.read_bible,
             bible.check_timeline_position,

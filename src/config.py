@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     chapter_min_words: int = 6000
     chapter_max_words: int = 8000
 
+    # Max output tokens for the Storyteller LLM call (Gemini 2.5 Flash supports up to 65536).
+    # Default 8192 is too low for 6000-8000 word chapters + JSON metadata.
+    storyteller_max_output_tokens: int = 16384
+
     # Pipeline timeout in seconds (default 5 minutes)
     pipeline_timeout_seconds: int = 300
 
