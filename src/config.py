@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # ADK session ID prefix for story sessions
     session_id_prefix: str = "session"
 
+    # ReflectAndRetryToolPlugin retry count for tool failures
+    tool_retry_max_attempts: int = 3
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 @lru_cache

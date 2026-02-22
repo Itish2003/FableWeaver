@@ -6,6 +6,12 @@ from src.tools.meta_tools import MetaTools
 from src.config import get_settings
 from src.utils.resilient_gemini import ResilientGemini
 from src.tools.core_tools import BibleTools
+from src.callbacks import (
+    before_storyteller_callback,
+    make_timing_callbacks,
+    tool_error_fallback,
+    before_storyteller_model_callback,
+)
 
 
 # --- Agents ---
@@ -19,12 +25,18 @@ def create_storyteller(story_id: str, model_name: str = None, universes: List[st
 
     universe_ctx = ", ".join(universes) if universes else "General"
 
+    _, after_timing = make_timing_callbacks("Storyteller")
+
     return Agent(
         name="storyteller",
         model=ResilientGemini(model=model_name),
         generate_content_config=types.GenerateContentConfig(
             max_output_tokens=settings.storyteller_max_output_tokens,
         ),
+        before_agent_callback=before_storyteller_callback,
+        after_agent_callback=after_timing,
+        before_model_callback=before_storyteller_model_callback,
+        on_tool_error_callback=tool_error_fallback,
         tools=[
             bible.read_bible,
             bible.check_timeline_position,
@@ -564,11 +576,15 @@ def create_archivist(story_id: str) -> Agent:
 
     # NOTE: No BibleTools needed - output_schema disables tools, Bible state is passed in prompt
 
+    before_timing, after_timing = make_timing_callbacks("Archivist")
+
     return Agent(
         name="archivist",
         model=ResilientGemini(model=settings.model_archivist),
         output_schema=BibleDelta,  # Enforces structured output
         output_key="bible_delta",  # Saves to session state for retrieval
+        before_agent_callback=before_timing,
+        after_agent_callback=after_timing,
         # NOTE: No tools - output_schema disables all tools. Bible state is passed in prompt.
         instruction="""
 You are the ARCHIVIST of FableWeaver - Guardian of Narrative Continuity.

@@ -14,6 +14,7 @@ from src.utils.resilient_client import ResilientClient
 from src.utils.resilient_gemini import ResilientGemini
 from src.tools.core_tools import BibleTools
 from src.config import get_settings
+from src.callbacks import make_timing_callbacks, tool_error_fallback
 
 logger = logging.getLogger("fable.research")
 
@@ -603,8 +604,13 @@ def create_lore_keeper(story_id: str) -> Agent:
 
     bible = BibleTools(story_id)
 
+    before_timing, after_timing = make_timing_callbacks("Lore Keeper")
+
     return Agent(
         model=ResilientGemini(model=settings.model_research),
+        before_agent_callback=before_timing,
+        after_agent_callback=after_timing,
+        on_tool_error_callback=tool_error_fallback,
         instruction="""
 You are the SUPREME LORE KEEPER - Guardian of Canonical Truth.
 Your Mission: Consolidate research into a VERIFIED, CONSISTENT World Bible.
@@ -1052,8 +1058,13 @@ def create_midstream_lore_keeper(story_id: str) -> Agent:
 
     bible = BibleTools(story_id)
 
+    before_timing, after_timing = make_timing_callbacks("Midstream Lore Keeper")
+
     return Agent(
         model=ResilientGemini(model=settings.model_research),
+        before_agent_callback=before_timing,
+        after_agent_callback=after_timing,
+        on_tool_error_callback=tool_error_fallback,
         instruction="""
 You are a LORE KEEPER performing a MID-STREAM research update.
 
