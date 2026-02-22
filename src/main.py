@@ -1245,8 +1245,27 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
             # CONTINUE GAME
             # Wait for next user action
             data = await websocket.receive_text()
-            payload = json.loads(data)
-            
+
+            # --- Input validation (issue #7) ---
+            from src.schemas.ws_messages import MAX_MESSAGE_BYTES, VALID_ACTIONS, validate_ws_payload
+
+            if len(data.encode("utf-8", errors="replace")) > MAX_MESSAGE_BYTES:
+                await manager.send_json({"type": "error", "code": "MESSAGE_TOO_LARGE",
+                    "message": f"Message exceeds {MAX_MESSAGE_BYTES // 1024}KB limit"}, websocket)
+                continue
+
+            try:
+                payload = json.loads(data)
+            except (json.JSONDecodeError, ValueError) as exc:
+                await manager.send_json({"type": "error", "code": "INVALID_JSON",
+                    "message": f"Malformed JSON: {exc}"}, websocket)
+                continue
+
+            if not isinstance(payload, dict):
+                await manager.send_json({"type": "error", "code": "INVALID_FORMAT",
+                    "message": "Expected a JSON object"}, websocket)
+                continue
+
             action = payload.get("action")
             inner_data = payload.get("payload", {})
             
@@ -1302,7 +1321,15 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
                      action = "bible-snapshot"
                      inner_data["subcommand"] = parts[0] if parts else "list"
                      inner_data["snapshot_name"] = parts[1] if len(parts) > 1 else None
-            
+
+            # --- Validate payload against action schema (after slash-command routing) ---
+            ok, result = validate_ws_payload(action, inner_data)
+            if not ok:
+                await manager.send_json({"type": "error", "code": "INVALID_PAYLOAD",
+                    "message": result}, websocket)
+                continue
+            inner_data = result  # Use the validated (and coerced) payload
+
             if action == "init":
                 # START NEW STORY PHASE
                 universes = inner_data.get("universes", ["General"])
