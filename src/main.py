@@ -13,15 +13,15 @@ import sys
 import uuid
 import re
 import copy
-from sqlalchemy import select, desc, delete
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 from contextlib import asynccontextmanager
 
 from src.database import get_db, AsyncSessionLocal
-from src.models import Story, History, WorldBible, AdkSession, AdkEvent, BibleSnapshot
+from src.models import Story, History, WorldBible, BibleSnapshot
 from src.tools.core_tools import get_default_bible_content
-from src.config import make_session_id, get_settings
+from src.config import make_session_id, get_settings, get_session_service
 
 # --- Logger ---
 from src.utils.logging_config import get_logger, StoryAdapter
@@ -42,7 +42,7 @@ from google.adk.runners import InMemoryRunner, Runner
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.plugins import ReflectAndRetryToolPlugin
-from src.services.adk_service import FableSessionService
+from google.adk.errors.already_exists_error import AlreadyExistsError
 from google.genai import types
 
 # Import our agents
@@ -579,14 +579,13 @@ async def delete_story(story_id: str, db: AsyncSession = Depends(get_db)):
     await db.delete(story)
     await db.commit()
 
-    # Delete ADK Sessions and Events (application-level cascade)
+    # Delete ADK session (cascade deletes events)
     adk_session_id = make_session_id(story_id)
     try:
-        # Delete events first (they reference sessions)
-        await db.execute(delete(AdkEvent).where(AdkEvent.adk_session_id == adk_session_id))
-        # Then delete the session
-        await db.execute(delete(AdkSession).where(AdkSession.adk_session_id == adk_session_id))
-        await db.commit()
+        session_service = get_session_service()
+        await session_service.delete_session(
+            app_name="agents", user_id="user", session_id=adk_session_id
+        )
         logger.log("info", f"Cleaned up ADK session and events for story {story_id}")
     except Exception as e:
         logger.log("error", f"Failed to delete ADK session for {story_id}: {e}")
@@ -827,29 +826,18 @@ async def reset_story_session(story_id: str, db: AsyncSession = Depends(get_db))
     Does NOT delete story history or World Bible - only clears agent conversation state.
     """
     agent_session_id = make_session_id(story_id)
+    session_service = get_session_service()
 
-    # Delete all events for this session
-    result = await db.execute(
-        select(AdkEvent).where(AdkEvent.adk_session_id == agent_session_id)
+    # Delete the session (cascade deletes events), then recreate empty
+    await session_service.delete_session(
+        app_name="agents", user_id="user", session_id=agent_session_id
     )
-    events = result.scalars().all()
-    event_count = len(events)
-
-    for event in events:
-        await db.delete(event)
-
-    # Also clear the session record if it exists
-    session_result = await db.execute(
-        select(AdkSession).where(AdkSession.adk_session_id == agent_session_id)
+    await session_service.create_session(
+        app_name="agents", user_id="user", session_id=agent_session_id
     )
-    session = session_result.scalar_one_or_none()
-    if session:
-        await db.delete(session)
 
-    await db.commit()
-
-    logger.log("info", f"Reset session {agent_session_id}: deleted {event_count} events")
-    return {"status": "reset", "story_id": story_id, "events_deleted": event_count}
+    logger.log("info", f"Reset session {agent_session_id}")
+    return {"status": "reset", "story_id": story_id}
 
 
 @app.get("/stories/{story_id}/export")
@@ -1159,34 +1147,17 @@ async def get_story_family_tree(story_id: str, db: AsyncSession = Depends(get_db
     }
 
 
-async def delete_last_events_from_session(session_service: FableSessionService, story_id: str, count: int = 1, clear_all: bool = False):
-    """Delete events from an ADK session (for undo/rewrite functionality).
-
-    Args:
-        clear_all: If True, deletes ALL events in the session (needed for rewrite to avoid orphaned tool calls)
-    """
+async def reset_adk_session(story_id: str) -> None:
+    """Reset ADK session for undo/rewrite by deleting and recreating it."""
     agent_session_id = make_session_id(story_id)
-    async with AsyncSessionLocal() as db:
-        if clear_all:
-            # Delete ALL events - needed for rewrite to avoid conversation corruption
-            result = await db.execute(
-                select(AdkEvent).where(AdkEvent.adk_session_id == agent_session_id)
-            )
-            events_to_delete = result.scalars().all()
-        else:
-            # Get the last events (for undo)
-            result = await db.execute(
-                select(AdkEvent).where(
-                    AdkEvent.adk_session_id == agent_session_id
-                ).order_by(desc(AdkEvent.timestamp)).limit(count * 2)
-            )
-            events_to_delete = result.scalars().all()
-
-        for event in events_to_delete:
-            await db.delete(event)
-
-        await db.commit()
-        logger.log("info", f"Deleted {len(events_to_delete)} events from session {agent_session_id}")
+    session_service = get_session_service()
+    await session_service.delete_session(
+        app_name="agents", user_id="user", session_id=agent_session_id
+    )
+    await session_service.create_session(
+        app_name="agents", user_id="user", session_id=agent_session_id
+    )
+    logger.log("info", f"Reset ADK session {agent_session_id}")
 
 
 # --- WebSocket Endpoint ---
@@ -1216,18 +1187,18 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
     active_agent = storyteller
     
     # Services are persistent for the connection
-    session_service = FableSessionService()
+    session_service = get_session_service()
     memory_service = InMemoryMemoryService()
     artifact_service = InMemoryArtifactService()
-    
-    # Ensure session exists (FableSessionService handles creation/retrieval)
+
+    # Ensure session exists (ADK raises AlreadyExistsError on duplicate)
     try:
         await session_service.create_session(
             app_name="agents",
             user_id=user_id,
             session_id=agent_session_id
         )
-    except Exception as e:
+    except AlreadyExistsError:
         pass
     
     try:
@@ -1629,7 +1600,7 @@ Proceed to write the next chapter."""
                         logger.log("info", f"Deleted last history item {last_history.id} (Chapter {deleted_chapter_sequence}) for rewrite.")
 
                 # 2. Clean up ADK session events - clear ALL to avoid orphaned tool calls
-                await delete_last_events_from_session(session_service, story_id, clear_all=True)
+                await reset_adk_session(story_id)
 
                 # 3. Fetch universes from World Bible for context continuity
                 universes, deviation = await get_story_universes(story_id)
@@ -1937,7 +1908,7 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
                             logger.log("info", f"Undo: Deleted chapter {chapter_id} from story {story_id}")
 
                             # Also clean up ADK session events for consistency
-                            await delete_last_events_from_session(session_service, story_id, count=1)
+                            await reset_adk_session(story_id)
 
                             # Inform user
                             bible_msg = " World Bible restored to previous state." if bible_restored else ""
@@ -1962,32 +1933,10 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
                 # RESET - Clear corrupted session state
                 await manager.send_json({"type": "status", "status": "processing"}, websocket)
                 try:
-                    agent_session_id = make_session_id(story_id)
-                    async with AsyncSessionLocal() as db:
-                        # Delete all events for this session
-                        result = await db.execute(
-                            select(AdkEvent).where(AdkEvent.adk_session_id == agent_session_id)
-                        )
-                        events = result.scalars().all()
-                        event_count = len(events)
-
-                        for event in events:
-                            await db.delete(event)
-
-                        # Also clear the session record
-                        session_result = await db.execute(
-                            select(AdkSession).where(AdkSession.adk_session_id == agent_session_id)
-                        )
-                        session = session_result.scalar_one_or_none()
-                        if session:
-                            await db.delete(session)
-
-                        await db.commit()
-
-                    logger.log("info", f"Reset session {agent_session_id}: deleted {event_count} events")
+                    await reset_adk_session(story_id)
                     await manager.send_json({
                         "type": "content_delta",
-                        "text": f"[System] Session reset complete. Cleared {event_count} events. Story history and World Bible preserved.\n",
+                        "text": "[System] Session reset complete. Story history and World Bible preserved.\n",
                         "sender": "system"
                     }, websocket)
                 except Exception as e:
@@ -2491,7 +2440,7 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
                 )
                 db.add(new_history)
 
-                # ADK Events are now handled by FableSessionService, no manual save here.
+                # ADK Events are handled by DatabaseSessionService, no manual save here.
 
                 await db.commit()
 

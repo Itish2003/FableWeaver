@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, JSON, Integer, UniqueConstraint, LargeBinary
+from sqlalchemy import String, DateTime, ForeignKey, Text, JSON, Integer, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -70,59 +70,5 @@ class WorldBible(Base):
 
     story: Mapped["Story"] = relationship("Story", back_populates="world_bible")
 
-# --- Google ADK Compatible Models ---
-
-class AdkSession(Base):
-    __tablename__ = "adk_sessions"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    app_name: Mapped[str] = mapped_column(String(128))
-    user_id: Mapped[str] = mapped_column(String(128))
-    adk_session_id: Mapped[str] = mapped_column(String(128))
-    state: Mapped[dict] = mapped_column(JSON, default=dict)
-    create_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    update_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    # Relationships
-    events: Mapped[List["AdkEvent"]] = relationship("AdkEvent", back_populates="session", cascade="all, delete-orphan", order_by="AdkEvent.timestamp")
-
-    __table_args__ = (
-        UniqueConstraint("app_name", "user_id", "adk_session_id", name="uix_adk_session"),
-    )
-
-class AdkEvent(Base):
-    __tablename__ = "adk_events"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    adk_event_id: Mapped[str] = mapped_column(String(128))
-    app_name: Mapped[str] = mapped_column(String(128))
-    user_id: Mapped[str] = mapped_column(String(128))
-    adk_session_id: Mapped[str] = mapped_column(String(128))
-    
-    # FK to AdkSession (using Django logic of explicit FK or linking by string? User's django model had ForeignKey to AdkSession)
-    # But ADK usually looks up by ID strings.
-    # I'll add the FK to match `session = models.ForeignKey(AdkSession...)`
-    session_id: Mapped[Optional[int]] = mapped_column(ForeignKey("adk_sessions.id"), nullable=True)
-    session: Mapped[Optional["AdkSession"]] = relationship("AdkSession", back_populates="events")
-
-    invocation_id: Mapped[str] = mapped_column(String(256))
-    author: Mapped[str] = mapped_column(String(256)) # user, assistant, system
-    actions: Mapped[bytes] = mapped_column(LargeBinary) # Pickled actions
-    long_running_tool_ids_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    branch: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    content: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    grounding_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    custom_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-
-    partial: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    turn_complete: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    error_code: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
-    error_message: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
-    interrupted: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint("adk_event_id", "app_name", "user_id", "adk_session_id", name="uix_adk_event"),
-    )
+# ADK session/event tables are now managed by google.adk.sessions.DatabaseSessionService.
 
