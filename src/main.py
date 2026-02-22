@@ -172,13 +172,9 @@ async def auto_update_bible_from_chapter(story_id: str, chapter_text: str, chapt
     from sqlalchemy.orm.attributes import flag_modified
 
     # Extract JSON metadata from chapter text
-    json_match = re.search(r'\{[\s\S]*"summary"[\s\S]*\}', chapter_text)
-    if not json_match:
-        return
-
-    try:
-        chapter_data = json.loads(json_match.group(0))
-    except:
+    from src.utils.json_extractor import extract_chapter_json
+    chapter_data = extract_chapter_json(chapter_text)
+    if chapter_data is None:
         return
 
     async with AsyncSessionLocal() as db:
@@ -1487,23 +1483,18 @@ Each agent should perform ONLY their designated role."""
                     # Extract last chapter's JSON metadata for Archivist
                     last_chapter_metadata = ""
                     if recent_chapters and recent_chapters[0].text:
-                        last_text = recent_chapters[0].text
-                        json_match = re.search(r'\{[\s\S]*"summary"[\s\S]*\}', last_text)
-                        if json_match:
-                            try:
-                                chapter_data = json.loads(json_match.group(0))
-                                # Extract key metadata for Archivist
-                                metadata_parts = []
-                                if chapter_data.get('stakes_tracking'):
-                                    metadata_parts.append(f"**Stakes Tracking:**\n```json\n{json.dumps(chapter_data['stakes_tracking'], indent=2)}\n```")
-                                if chapter_data.get('timeline'):
-                                    metadata_parts.append(f"**Timeline:**\n```json\n{json.dumps(chapter_data['timeline'], indent=2)}\n```")
-                                if chapter_data.get('character_voices_used'):
-                                    metadata_parts.append(f"**Characters Featured:** {', '.join(v.split('(')[0].strip() for v in chapter_data['character_voices_used'][:5])}")
-                                if metadata_parts:
-                                    last_chapter_metadata = "\n\n".join(metadata_parts)
-                            except:
-                                pass
+                        from src.utils.json_extractor import extract_chapter_json
+                        chapter_data = extract_chapter_json(recent_chapters[0].text)
+                        if chapter_data:
+                            metadata_parts = []
+                            if chapter_data.get('stakes_tracking'):
+                                metadata_parts.append(f"**Stakes Tracking:**\n```json\n{json.dumps(chapter_data['stakes_tracking'], indent=2)}\n```")
+                            if chapter_data.get('timeline'):
+                                metadata_parts.append(f"**Timeline:**\n```json\n{json.dumps(chapter_data['timeline'], indent=2)}\n```")
+                            if chapter_data.get('character_voices_used'):
+                                metadata_parts.append(f"**Characters Featured:** {', '.join(v.split('(')[0].strip() for v in chapter_data['character_voices_used'][:5])}")
+                            if metadata_parts:
+                                last_chapter_metadata = "\n\n".join(metadata_parts)
 
                     # Get key World Bible facts for inline context
                     bible_result = await db.execute(select(WorldBible).where(WorldBible.story_id == story_id))
@@ -2427,22 +2418,13 @@ DO NOT write a different chapter. Rewrite THIS chapter with the requested modifi
             summary_text = None
             questions_json = None  # Optional clarifying questions for next chapter
 
-            # Try to extract JSON block
-            json_match = re.search(r'\{[\s\S]*\"choices\"[\s\S]*\}', buffer)
-            if json_match:
-                try:
-                    json_str = json_match.group(0)
-                    json_str = re.sub(r'```json|```', '', json_str).strip()
-                    parsed = json.loads(json_str)
-                    choices_json = parsed.get("choices")
-                    summary_text = parsed.get("summary")
-                    questions_json = parsed.get("questions")  # Extract optional questions
-                    # Remove JSON from stored text for cleaner history display? 
-                    # Actually keeping it in text is fine for raw record, but we want structured too.
-                    # Frontend cleans it up. Let's keep raw text as is or clean it?
-                    # Let's keep raw text in 'text' column for fidelity, but structured data in columns.
-                except:
-                    pass
+            # Extract structured JSON metadata from chapter output
+            from src.utils.json_extractor import extract_chapter_json
+            parsed = extract_chapter_json(buffer)
+            if parsed:
+                choices_json = parsed.get("choices")
+                summary_text = parsed.get("summary")
+                questions_json = parsed.get("questions")
             
             # Save History Item (Story History)
             async with AsyncSessionLocal() as db:
