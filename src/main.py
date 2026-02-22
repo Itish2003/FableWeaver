@@ -39,15 +39,6 @@ class FileLogger:
 
 logger = FileLogger()
 
-import google.genai
-from src.utils.resilient_client import ResilientClient
-
-# Store the original Client class before patching
-OriginalClient = google.genai.Client
-
-# Global patch
-google.genai.Client = ResilientClient
-
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.runners import InMemoryRunner, Runner
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService

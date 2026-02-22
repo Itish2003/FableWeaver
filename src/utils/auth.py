@@ -33,8 +33,6 @@ class KeyRotator:
             
             if time.time() > self._cooldowns[key]:
                 print(f"[KeyRotator] Selected key: {key[:8]}...")
-                # Update environment for ADK internal usage if needed
-                os.environ["GOOGLE_API_KEY"] = key
                 return key
         
         # All keys in cooldown, find the one with the smallest remaining wait

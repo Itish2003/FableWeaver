@@ -2,7 +2,6 @@ import os
 import re
 import json
 from typing import List, Any, Dict
-from google.genai import Client
 from google.adk import Agent
 from google.adk.agents.parallel_agent import ParallelAgent
 from google.adk.agents.sequential_agent import SequentialAgent
@@ -11,6 +10,7 @@ from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from src.utils.auth import get_api_key
 from src.utils.resilient_client import ResilientClient
+from src.utils.resilient_gemini import ResilientGemini
 from src.tools.core_tools import BibleTools
 from src.config import get_settings
 
@@ -427,17 +427,13 @@ def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[
             focus = topic_data["focus"]
             universe = topic_data.get("universe", "General")
 
-        # ROTATING KEY for each agent's initialization
         settings = get_settings()
-
-        key = get_api_key()
-        os.environ["GOOGLE_API_KEY"] = key
 
         agent_name = f"researcher_{re.sub(r'[^a-zA-Z0-9_]', '_', focus)[:50].strip('_')}"
         print(f"DEBUG: Initializing sub-agent: {agent_name} focused on '{focus}'")
 
         agent = Agent(
-            model=settings.model_research,
+            model=ResilientGemini(model=settings.model_research),
             instruction=f"""
 You are an EXPERT LORE RESEARCHER specializing in canonical accuracy.
 Primary Focus: '{universe}'
@@ -603,13 +599,10 @@ def create_lore_keeper(story_id: str) -> Agent:
     """
     settings = get_settings()
 
-    key = get_api_key()
-    os.environ["GOOGLE_API_KEY"] = key
-
     bible = BibleTools(story_id)
 
     return Agent(
-        model=settings.model_research,
+        model=ResilientGemini(model=settings.model_research),
         instruction="""
 You are the SUPREME LORE KEEPER - Guardian of Canonical Truth.
 Your Mission: Consolidate research into a VERIFIED, CONSISTENT World Bible.
@@ -1055,13 +1048,10 @@ def create_midstream_lore_keeper(story_id: str) -> Agent:
     """
     settings = get_settings()
 
-    key = get_api_key()
-    os.environ["GOOGLE_API_KEY"] = key
-
     bible = BibleTools(story_id)
 
     return Agent(
-        model=settings.model_research,
+        model=ResilientGemini(model=settings.model_research),
         instruction="""
 You are a LORE KEEPER performing a MID-STREAM research update.
 
