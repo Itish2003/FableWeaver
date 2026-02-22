@@ -7,7 +7,7 @@ from src.config import make_session_id, get_session_service
 from src.utils.logging_config import get_logger
 from src.utils.legacy_logger import logger
 from src.ws.context import WsSessionContext
-from src.ws.actions import ACTION_DISPATCH, ActionResult
+from src.ws.actions import get_action_dispatch, ActionResult
 from src.ws.runner import run_pipeline
 
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
@@ -111,7 +111,8 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
             inner_data = val_result
 
             ctx.action = action
-            handler = ACTION_DISPATCH.get(action)
+            dispatch = get_action_dispatch()
+            handler = dispatch.get(action)
 
             if not handler:
                 await manager.send_json({"type": "error", "message": f"Unknown action: {action}"}, websocket)
