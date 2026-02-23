@@ -93,11 +93,11 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                 ):
                     # Only stream output from the Storyteller agent to the user
                     # Research agents (lore_hunter, lore_keeper, archivist) run silently
-                    event_author = getattr(event, 'author', '')
-                    is_storyteller = event_author == "storyteller" or "storyteller" in event_author.lower()
+                    event_author = str(getattr(event, 'author', '') or '').lower()
+                    is_storyteller = "storyteller" in event_author or "story_teller" in event_author or "narrator" in event_author
 
                     # Agent transition -> send WebSocket progress
-                    if event_author and event_author != last_event_author and not ws_disconnected:
+                    if event_author and event_author != str(last_event_author or '').lower() and not ws_disconnected:
                         if last_event_author is not None:
                             try:
                                 await manager.send_json({

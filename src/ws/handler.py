@@ -61,7 +61,13 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
             try:
                 payload = json.loads(data)
                 action = payload.get("action")
-                inner_data = payload.get("payload", {})
+                # Handle both nested 'payload' key and flat structure for backward compatibility
+                inner_data = payload.get("payload")
+                if inner_data is None:
+                    # If no 'payload' key, treat the root object as the data
+                    inner_data = payload.copy()
+                    if "action" in inner_data:
+                        del inner_data["action"]
             except (json.JSONDecodeError, ValueError) as exc:
                 await manager.send_json({"type": "error", "code": "INVALID_JSON",
                     "message": f"Malformed JSON: {exc}"}, websocket)
@@ -106,6 +112,7 @@ async def websocket_endpoint(websocket: WebSocket, story_id: str):
             # Validate payload
             ok, val_result = validate_ws_payload(action, inner_data)
             if not ok:
+                _logger.warning("WS validation failed | action=%s | error=%s", action, val_result)
                 await manager.send_json({"type": "error", "code": "INVALID_PAYLOAD", "message": val_result}, websocket)
                 continue
             inner_data = val_result
