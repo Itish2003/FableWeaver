@@ -5,7 +5,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from src.database import AsyncSessionLocal
 from src.models import WorldBible
 from datetime import datetime
-from src.utils.bible_validator import validate_and_fix_bible_entry
+from src.utils.bible_validator import validate_and_fix_bible_entry, check_power_origin_context_leakage
 
 # Paths
 BIBLE_PATH = "src/world_bible.json"
@@ -286,6 +286,16 @@ class BibleTools:
                     # Validate and fix the value before saving (converts legacy formats)
                     validated_value = validate_and_fix_bible_entry(key, value)
                     current[keys[-1]] = validated_value
+
+                    # Check for power context leakage if updating power_origins
+                    if "power_origins" in key and isinstance(validated_value, dict):
+                        leakage_warnings = check_power_origin_context_leakage(validated_value)
+                        if leakage_warnings:
+                            for warning in leakage_warnings:
+                                logger.warning(
+                                    f"⚠️  CONTEXT LEAKAGE DETECTED in '{key}': {warning}\n"
+                                    f"    → Move universe-specific terminology to 'source_universe_context' field"
+                                )
 
                     # Step 3: Attempt write with version check
                     # Re-fetch to check for concurrent modifications

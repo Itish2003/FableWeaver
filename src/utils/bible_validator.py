@@ -418,6 +418,65 @@ def _fix_timeline_section(timeline: dict) -> dict:
     return result
 
 
+def check_power_origin_context_leakage(power_origin: dict, universe: Optional[str] = None) -> List[str]:
+    """
+    Check for universe-specific terminology in power_origin that indicates context leakage.
+
+    Detects common source-universe concepts that shouldn't appear in mechanics descriptions:
+    - JJK terms: "cursed technique", "cursed energy", "jujutsu", "domain"
+    - Worm terms: "shard", "trigger", "parahuman", "power"
+    - General fiction system terms: "qi", "mana", "cultivation"
+
+    Args:
+        power_origin: The power_origin dict from World Bible
+        universe: Optional universe name to guide checking (e.g., "Jujutsu Kaisen")
+
+    Returns:
+        List of leakage warnings found in the power_origin entry
+    """
+    warnings = []
+
+    # Terms associated with specific universes - these should only be in source_universe_context
+    universe_specific_terms = {
+        "jjk": ["cursed technique", "cursed energy", "jujutsu", "domain expansion", "binding vow"],
+        "worm": ["shard", "trigger event", "parahuman", "cape"],
+        "naruto": ["chakra", "jutsu", "kekkei genkai", "biju"],
+        "cultivation": ["qi", "qi cultivation", "cultivation stage", "realm", "dantian"],
+    }
+
+    # Fields to check in power_origin
+    fields_to_check = [
+        "power_name",
+        "combat_style",
+        "weaknesses_and_counters"
+    ]
+
+    # Check canon_techniques for leakage
+    for i, technique in enumerate(power_origin.get("canon_techniques", [])):
+        for field in ["name", "description"]:
+            text = technique.get(field, "").lower()
+            for category, terms in universe_specific_terms.items():
+                for term in terms:
+                    if term in text:
+                        warnings.append(
+                            f"canon_techniques[{i}].{field}: Found universe-specific term '{term}' "
+                            f"(move to source_universe_context)"
+                        )
+
+    # Check other fields
+    for field in fields_to_check:
+        text = power_origin.get(field, "").lower()
+        for category, terms in universe_specific_terms.items():
+            for term in terms:
+                if term in text:
+                    warnings.append(
+                        f"{field}: Found universe-specific term '{term}' "
+                        f"(move to source_universe_context)"
+                    )
+
+    return warnings
+
+
 def validate_bible_integrity(bible: dict) -> List[str]:
     """
     Check Bible data integrity and return list of issues.
