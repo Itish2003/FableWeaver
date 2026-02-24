@@ -127,12 +127,37 @@ async def handle_research(ctx: WsSessionContext, inner_data: dict) -> ActionResu
         async def research_gap(gap_query):
             """Run single research task."""
             try:
-                result = await meta.trigger_research(gap_query, depth=depth, universes=universes)
+                # Report task start
+                task_indicator = gap_query[:50] + ("..." if len(gap_query) > 50 else "")
+                await manager.send_json({
+                    "type": "content_delta",
+                    "text": f"  → Researching: {task_indicator}\n",
+                    "sender": "system"
+                }, ctx.websocket)
+
+                result = await asyncio.wait_for(
+                    meta.trigger_research(gap_query, depth=depth, universes=universes),
+                    timeout=60.0
+                )
                 return {"query": gap_query, "success": True, "result": result}
+            except asyncio.TimeoutError:
+                return {"query": gap_query, "success": False, "error": "Timeout (60s)"}
             except Exception as e:
                 return {"query": gap_query, "success": False, "error": str(e)}
 
-        results = await asyncio.gather(*[research_gap(gap) for gap in gaps])
+        # Run research with timeout for the whole gather
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*[research_gap(gap) for gap in gaps]),
+                timeout=300.0
+            )
+        except asyncio.TimeoutError:
+            await manager.send_json({
+                "type": "content_delta",
+                "text": f"⚠️ Research timeout (5 minutes exceeded). Partial results shown below.\n",
+                "sender": "system"
+            }, ctx.websocket)
+            results = []
 
         # Step 3: Report results
         success_count = sum(1 for r in results if r["success"])
