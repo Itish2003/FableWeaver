@@ -2,6 +2,13 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TimelineComparison from './TimelineComparison';
 import WorldBibleEditor from './WorldBibleEditor/WorldBibleEditor';
+import {
+  StakesDashboard,
+  CanonImpactTracker,
+  StoryIntelligenceSidebar,
+  InteractiveTimeline,
+  ChoiceWithImpactPreview
+} from './DataLeverageComponents';
 
 // Available slash commands
 const SLASH_COMMANDS = [
@@ -747,15 +754,16 @@ export default function StoryView({ engine }) {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-white/10">
+            <div className="flex border-b border-white/10 overflow-x-auto">
               {[
                 { id: 'overview', label: 'Info' },
                 { id: 'relations', label: 'Relations' },
                 { id: 'powers', label: 'Powers' },
-                { id: 'stakes', label: 'Stakes' },
-                { id: 'locations', label: 'Locs' },
-                { id: 'timeline', label: 'Time' },
-                { id: 'comparison', label: 'Canon' },
+                { id: 'stakes', label: '📊 Stakes' },
+                { id: 'canon-impact', label: '🔀 Canon' },
+                { id: 'story-intel', label: '💡 Intel' },
+                { id: 'timeline', label: '⏱️ Time' },
+                { id: 'comparison', label: 'Canon Diff' },
                 { id: 'knowledge', label: 'Know' },
                 { id: 'edit', label: 'Edit' },
               ].map(tab => (
@@ -1263,112 +1271,27 @@ export default function StoryView({ engine }) {
                     </div>
                   )}
 
-                  {/* Stakes Tab */}
+                  {/* Stakes Tab - with Rich Data Leverage Visualization */}
                   {bibleTab === 'stakes' && (
                     <div className="space-y-4">
-                      {/* Costs Paid */}
-                      {safeArray(worldBible.stakes_and_consequences?.costs_paid).length > 0 && (
-                        <div className="bg-white/5 rounded-lg p-3 border border-white/5">
-                          <h4 className="text-sm font-bold text-red-400 mb-2">Costs Paid</h4>
-                          <div className="space-y-2">
-                            {safeArray(worldBible.stakes_and_consequences?.costs_paid).slice(-5).map((cost, i) => {
-                              // Handle both string and object formats
-                              const costText = typeof cost === 'string' ? cost : cost.cost;
-                              const severity = typeof cost === 'object' ? cost.severity : 'moderate';
-                              return (
-                                <div key={i} className="text-xs bg-red-500/10 rounded px-2 py-1 border border-red-500/20">
-                                  <span className={`inline-block px-1 rounded mr-2 ${
-                                    severity === 'severe' || severity === 'permanent' ? 'bg-red-500/30 text-red-300' :
-                                    severity === 'moderate' ? 'bg-orange-500/30 text-orange-300' :
-                                    'bg-yellow-500/30 text-yellow-300'
-                                  }`}>
-                                    {severity || 'minor'}
-                                  </span>
-                                  {costText}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                      <StakesDashboard
+                        bible={worldBible}
+                        currentChapter={history?.length || 0}
+                      />
+                    </div>
+                  )}
 
-                      {/* Near Misses */}
-                      {safeArray(worldBible.stakes_and_consequences?.near_misses).length > 0 && (
-                        <div className="bg-white/5 rounded-lg p-3 border border-white/5">
-                          <h4 className="text-sm font-bold text-yellow-400 mb-2">Near Misses</h4>
-                          <div className="space-y-2">
-                            {safeArray(worldBible.stakes_and_consequences?.near_misses).slice(-3).map((miss, i) => {
-                              // Handle both string and object formats
-                              const missText = typeof miss === 'string' ? miss : miss.what_almost_happened;
-                              const savedBy = typeof miss === 'object' ? miss.saved_by : null;
-                              return (
-                                <div key={i} className="text-xs bg-yellow-500/10 rounded px-2 py-1 border border-yellow-500/20">
-                                  <p className="text-yellow-200">{missText}</p>
-                                  {savedBy && (
-                                    <p className="text-gray-400 mt-1">Saved by: {savedBy}</p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                  {/* Canon Impact Tab - with Rich Divergence Visualization */}
+                  {bibleTab === 'canon-impact' && (
+                    <div className="space-y-4">
+                      <CanonImpactTracker bible={worldBible} />
+                    </div>
+                  )}
 
-                      {/* Pending Consequences */}
-                      {safeArray(worldBible.stakes_and_consequences?.pending_consequences).length > 0 && (
-                        <div className="bg-white/5 rounded-lg p-3 border border-white/5">
-                          <h4 className="text-sm font-bold text-orange-400 mb-2">Pending Consequences</h4>
-                          <div className="space-y-2">
-                            {safeArray(worldBible.stakes_and_consequences?.pending_consequences).map((cons, i) => {
-                              // Handle both string and object formats
-                              const consText = typeof cons === 'string' ? cons : cons.predicted_consequence;
-                              const dueBy = typeof cons === 'object' ? cons.due_by : null;
-                              return (
-                                <div key={i} className="text-xs bg-orange-500/10 rounded px-2 py-1 border border-orange-500/20">
-                                  <p className="text-orange-200">{consText}</p>
-                                  {dueBy && <p className="text-gray-500 mt-1">Due: {dueBy}</p>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Power Usage Debt */}
-                      {worldBible.stakes_and_consequences?.power_usage_debt &&
-                       Object.keys(worldBible.stakes_and_consequences.power_usage_debt || {}).length > 0 && (
-                        <div className="bg-white/5 rounded-lg p-3 border border-white/5">
-                          <h4 className="text-sm font-bold text-purple-400 mb-2">Power Strain</h4>
-                          <div className="space-y-2">
-                            {Object.entries(worldBible.stakes_and_consequences.power_usage_debt || {}).map(([power, debt], i) => {
-                              const strainLevel = typeof debt === 'string' ? debt : debt?.strain_level || 'low';
-                              return (
-                                <div key={i} className="text-xs flex justify-between items-center">
-                                  <span className="text-gray-300">{power}</span>
-                                  <span className={`px-2 py-0.5 rounded ${
-                                    strainLevel === 'critical' ? 'bg-red-500/30 text-red-300' :
-                                    strainLevel === 'high' ? 'bg-orange-500/30 text-orange-300' :
-                                    strainLevel === 'medium' ? 'bg-yellow-500/30 text-yellow-300' :
-                                    'bg-green-500/30 text-green-300'
-                                  }`}>
-                                    {strainLevel}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {(!worldBible.stakes_and_consequences ||
-                        (!safeArray(worldBible.stakes_and_consequences.costs_paid).length &&
-                         !safeArray(worldBible.stakes_and_consequences.near_misses).length &&
-                         !safeArray(worldBible.stakes_and_consequences.pending_consequences).length &&
-                         !Object.keys(worldBible.stakes_and_consequences.power_usage_debt || {}).length)) && (
-                        <div className="text-gray-500 text-sm text-center py-4">
-                          No stakes recorded yet.
-                        </div>
-                      )}
+                  {/* Story Intelligence Tab */}
+                  {bibleTab === 'story-intel' && (
+                    <div className="space-y-4">
+                      <StoryIntelligenceSidebar chapterMetadata={null} />
                     </div>
                   )}
 
@@ -1572,19 +1495,7 @@ export default function StoryView({ engine }) {
                       )}
 
                       {/* Story Events */}
-                      {worldBible.story_timeline?.events && worldBible.story_timeline.events.length > 0 && (
-                        <div className="bg-white/5 rounded-lg p-3 border border-white/5">
-                          <h4 className="text-sm font-bold text-accent mb-2">Story Events</h4>
-                          <div className="space-y-1">
-                            {worldBible.story_timeline.events.slice(-5).map((event, i) => (
-                              <div key={i} className="text-xs">
-                                <span className="text-gray-500">[{event.date || '?'}]</span>{' '}
-                                <span className="text-gray-300">{event.event}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <InteractiveTimeline timeline={worldBible.story_timeline} />
                     </div>
                   )}
 
