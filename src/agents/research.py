@@ -805,7 +805,7 @@ When OC has powers from a specific canon character, structure as:
     }}
   ],
   "combat_style": "How the original wielder typically fights - aggressive/defensive/tactical/ambush",
-  "signature_moves": ["Most iconic/frequently used techniques with brief descriptions"],
+  "signature_moves": ["Move Name 1", "Move Name 2", "Move Name 3"],
   "technique_combinations": [
     {{"name": "Combo name", "components": ["tech1", "tech2"], "description": "Effect", "source": "[citation]"}}
   ],
@@ -1117,6 +1117,7 @@ Map research findings to these Bible keys:
 
 **ARRAYS (use [...] syntax):**
 - speech_patterns: `["Formal", "Mocking", "Uses 'we' to refer to avatars"]`
+- signature_moves: `["Shadow Merge", "Multi-Shadow Summoning", "Mahoraga Adaptation"]` (STRINGS ONLY, not objects)
 - verbal_tics: `["Adjusts monocle", "Speaks in riddles"]`
 - topics_they_discuss: `["Games", "Fate", "Logic"]`
 - topics_they_avoid: `["His past", "Direct questions"]`
