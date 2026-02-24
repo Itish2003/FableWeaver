@@ -49,9 +49,15 @@ async def create_storyteller(story_id: str, model_name: str = None, universes: L
             bible.read_bible,
             bible.check_timeline_position,
             bible.get_upcoming_canon_events,
-            bible.get_pressure_report,       # NEW: See prioritized canon events by urgency
-            bible.get_mandatory_events,      # NEW: Get CRITICAL events that MUST be in this chapter
-            bible.compare_canon_to_story,    # NEW: Side-by-side comparison of canon vs story
+            bible.get_pressure_report,       # See prioritized canon events by urgency
+            bible.get_mandatory_events,      # Get CRITICAL events that MUST be in this chapter
+            bible.compare_canon_to_story,    # Side-by-side comparison of canon vs story
+            bible.get_character_profile,     # Consolidated character data from all Bible sections
+            bible.get_character_voice,       # Voice profile for dialogue writing
+            bible.get_active_consequences,   # Pending consequences and power debt
+            bible.get_divergence_ripples,    # Active divergences and butterfly effects
+            bible.get_faction_overview,      # Faction dispositions and territory
+            bible.validate_power_usage,      # Validates power/technique is documented
             meta.trigger_research
         ],
         instruction=f"""
@@ -78,6 +84,8 @@ Timeline Context: {deviation}
    - `read_bible("canon_character_integrity")` → Get anti-Worfing rules
    - `read_bible("stakes_and_consequences")` → Get pending consequences to address
    - `read_bible("knowledge_boundaries")` → **CRITICAL: Get what characters can/cannot know!**
+   - `get_active_consequences()` → Get pending consequences and power debt to address
+   - `get_divergence_ripples()` → Get active divergences and predicted butterfly effects
 
 2. **CHECK TIMELINE POSITION** (CRITICAL FOR CANON ALIGNMENT):
    - Use `check_timeline_position()` → Get current story date and timeline status
@@ -143,6 +151,38 @@ For MEDIUM events (pressure ≥ 4.0):
 - Proceed normally with character-driven narrative
 - Use MEDIUM events for background texture
 - Build toward future critical events
+
+═══════════════════════════════════════════════════════════════════════════════
+                    PHASE 0.75: CHARACTER & FACTION PREPARATION
+═══════════════════════════════════════════════════════════════════════════════
+
+**FOR EACH CHARACTER who will appear in this chapter:**
+
+1. Use `get_character_profile("CharacterName")` to get their consolidated data:
+   - World state details, voice profile, integrity rules, secrets, knowledge limits
+   - Relationship to protagonist
+   - Known aliases
+
+2. Use `get_character_voice("CharacterName")` before writing their dialogue:
+   - Match their speech_patterns and vocabulary_level
+   - Include their verbal_tics naturally
+   - Respect topics_to_avoid
+   - Reference example_dialogue for tone
+
+**FOR SCENES INVOLVING FACTIONS:**
+
+3. Use `get_faction_overview()` to understand:
+   - Which factions are allied/hostile to protagonist
+   - Territory control for the scene's location
+   - Key members who might appear
+
+**FOR POWER USAGE SCENES:**
+
+4. Use `validate_power_usage("CharacterName", "technique_name")` BEFORE writing:
+   - Confirms the power/technique exists and is documented
+   - Returns limitations and weaknesses to show
+   - Flags undocumented abilities that need research
+   - CRITICAL: Do NOT write power usage without validating first
 
 ═══════════════════════════════════════════════════════════════════════════════
                          PHASE 1: RESEARCH CHECK (CRITICAL)
@@ -217,6 +257,13 @@ trigger_research("Winslow High School Brockton Bay layout students")
    - Include `weaknesses_and_counters` - enemies who know the power should exploit these
    - `unexplored_potential` can be discovered gradually, not all at once
    - When OC innovates, it should build on established mechanics, not ignore them
+
+   **POWER VALIDATION (MANDATORY):**
+   Before writing ANY combat or power usage scene:
+   - Call `validate_power_usage("character_name", "technique_name")` for each ability used
+   - If validation returns `valid: false`, do NOT use that technique
+   - If validation returns limitations, SHOW those limitations in the narrative
+   - If validation returns weaknesses, consider having opponents exploit them
 
 2. **CHARACTER FAITHFULNESS:**
    - Canonical characters MUST act according to their documented personality
@@ -374,12 +421,20 @@ When the protagonist (or any character) uses abilities:
 - Make limitations plot-relevant, not ignored
 - If they push past limits, show CONSEQUENCES
 
-**STAKES AND CONSEQUENCES ENFORCEMENT:**
-Check `stakes_and_consequences` before writing:
-- Address any `pending_consequences` that are due
-- If `power_usage_debt` is high, show strain/exhaustion
+**STAKES AND CONSEQUENCES ENFORCEMENT (MANDATORY):**
+Call `get_active_consequences()` before writing to see:
+- `pending_consequences` → Consequences that must be addressed or acknowledged
+- `power_usage_debt` → If high/critical, protagonist MUST show strain/exhaustion
+- `recent_costs` → Reference these for continuity (injuries don't vanish)
+- `pending_butterfly_effects` → Divergence consequences that could materialize this chapter
+
+**RULES:**
+- Address at least ONE pending consequence per chapter (if any exist)
+- If power_usage_debt is high/critical, show physical/mental effects
+- Reference recent costs (an injury from last chapter doesn't heal instantly)
+- Consider materializing a butterfly effect if narratively appropriate
 - Include at least ONE meaningful cost or near-miss per chapter
-- OC should NOT have effortless victories - document costs in your JSON output
+- OC should NOT have effortless victories
 - If chapter has combat, at least one of these must happen:
   * OC takes damage (physical/mental/resource)
   * OC narrowly escapes death/capture
@@ -427,6 +482,23 @@ When the OC changes canon events, consider:
 - Medium-term ripples (how this changes upcoming events)
 - Long-term implications (major plot changes)
 - Character reactions (especially canon characters who expected different outcomes)
+
+**DIVERGENCE CONSEQUENCE INTEGRATION (USE get_divergence_ripples):**
+Call `get_divergence_ripples()` to see active divergences and butterfly effects:
+
+1. **ACTIVE DIVERGENCES**: Show ongoing consequences of past changes
+   - Characters react to things being "different" from what they expected
+   - Factions adapt to changed circumstances
+   - New opportunities/threats emerge from past divergences
+
+2. **BUTTERFLY EFFECTS**: Consider materializing predicted consequences
+   - If a butterfly effect naturally fits this chapter, make it happen
+   - When materialized, the Archivist will mark it in the Bible
+   - Aim to materialize at least one effect every 3-4 chapters
+
+3. **ESCALATING DIVERGENCES**: Pay special attention to "escalating" status
+   - These are getting worse and demand narrative attention
+   - Characters should notice and react to escalating changes
 
 ═══════════════════════════════════════════════════════════════════════════════
                     PHASE 3.6: TIMELINE-AWARE CHOICE GENERATION (CRITICAL)
@@ -642,10 +714,14 @@ Your output MUST be a valid BibleDelta JSON with these fields:
 
 **YOUR FOCUS: CONTEXTUAL UPDATES THAT REQUIRE UNDERSTANDING**
 1. **Relationships** - Did any relationships change? Update `character_sheet.relationships`
-2. **Character Voices** - Did new characters appear? Add to `character_voices`
+2. **Character Voices** - Did new characters speak? Add/update `character_voices`
 3. **Knowledge Boundaries** - Did anyone learn secrets? Update `knowledge_boundaries`
 4. **Protagonist Status** - Did condition/state change? Update `character_sheet.status`
 5. **World State** - Did locations/factions change? Update `world_state`
+6. **Protagonist Knowledge** - Did OC learn new information? Add to `character_sheet.knowledge` via knowledge_updates
+7. **Butterfly Effect Materialization** - Did any predicted butterfly effects come true? Mark them as materialized
+8. **Anti-Worfing Verification** - Did any protected character act below their documented competence? Flag via context_leakage_details
+9. **Entity Aliases** - Were new character names/aliases revealed? Note for future entity_alias updates
 
 ═══════════════════════════════════════════════════════════════════════════════
                          STATE UPDATE CATEGORIES

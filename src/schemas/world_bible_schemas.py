@@ -494,6 +494,66 @@ class LoreKeeperOutput(GeminiCompatibleModel):
         description="Public facts everyone in-universe knows"
     )
 
+    # Character Voices (populated at init for key characters)
+    character_voices: Dict[str, Dict[str, str]] = Field(
+        default_factory=dict,
+        description="Character voice profiles: {CharName: {speech_patterns, vocabulary_level, verbal_tics, emotional_tells, example_dialogue}}"
+    )
+
+    # Character Sheet - Relationships (OC's initial relationship network)
+    character_sheet_relationships: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Protagonist's relationships: {CharName: {type, relation, trust, dynamics, knows_secret_identity, living_situation}}"
+    )
+
+    # Character Sheet - Starting Knowledge
+    character_sheet_knowledge: List[str] = Field(
+        default_factory=list,
+        description="What the protagonist knows at story start (plot-relevant facts, world knowledge)"
+    )
+
+    # Canon Character Integrity - Anti-Worfing rules
+    canon_character_integrity_protected: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Protected characters with minimum_competence, signature_moments, anti_worf_notes"
+    )
+
+    # Knowledge Boundaries - Character Secrets
+    knowledge_character_secrets: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Per-character secrets: {CharName: {secret, known_by: [], absolutely_hidden_from: []}}"
+    )
+
+    # Knowledge Boundaries - Character Knowledge Limits
+    knowledge_character_limits: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Per-character knowledge: {CharName: {knows: [], doesnt_know: [], suspects: []}}"
+    )
+
+    # Upcoming Canon Events (events the story should address)
+    upcoming_canon_events: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Canon events approaching the story start date with integration notes"
+    )
+
+    # Power Interactions (crossover power synergies)
+    power_interactions: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="How powers from different sources might interact or conflict"
+    )
+
+    # World State - Magic System rules
+    world_state_magic_system: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Power system rules per universe: {UniverseName: {system_name, core_rules, limitations, power_scaling}}"
+    )
+
+    # World State - Entity Aliases
+    world_state_entity_aliases: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="Character name variants: {canonical_name: [alias1, alias2, ...]}"
+    )
+
     # Summary
     summary: str = Field(
         default="",

@@ -1052,3 +1052,248 @@ Unaddressed:        {unaddressed_count}/{total}
                 report += f"• {div.get('canon_event', '?')} → {div.get('what_changed', '?')}\n"
 
         return report
+
+    # ─── Specialized Bible Consultation Tools ─────────────────────────────
+
+    async def get_character_profile(self, character_name: str) -> str:
+        """
+        Get a consolidated profile for a character from all Bible sections.
+        Combines data from world_state.characters, character_voices,
+        canon_character_integrity, and knowledge_boundaries into one view.
+        Use this before writing scenes featuring a specific character.
+        """
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await db.execute(stmt)
+            bible = result.scalar_one_or_none()
+            if not bible or not bible.content:
+                return json.dumps({"error": "No World Bible found"})
+
+            content = bible.content
+            profile = {"name": character_name}
+
+            # From world_state.characters
+            characters = content.get("world_state", {}).get("characters", {})
+            for name, data in characters.items():
+                if character_name.lower() in name.lower():
+                    profile["character_data"] = data
+                    break
+
+            # From character_voices
+            voices = content.get("character_voices", {})
+            for name, data in voices.items():
+                if character_name.lower() in name.lower():
+                    profile["voice"] = data
+                    break
+
+            # From canon_character_integrity
+            protected = content.get("canon_character_integrity", {}).get("protected_characters", [])
+            for char in protected:
+                if isinstance(char, dict) and character_name.lower() in char.get("name", "").lower():
+                    profile["integrity_rules"] = char
+                    break
+
+            # From knowledge_boundaries
+            secrets = content.get("knowledge_boundaries", {}).get("character_secrets", {})
+            for name, data in secrets.items():
+                if character_name.lower() in name.lower():
+                    profile["secrets"] = data
+                    break
+
+            knowledge = content.get("knowledge_boundaries", {}).get("character_knowledge_limits", {})
+            for name, data in knowledge.items():
+                if character_name.lower() in name.lower():
+                    profile["knowledge_limits"] = data
+                    break
+
+            # From character_sheet.relationships (if this is someone the OC knows)
+            relationships = content.get("character_sheet", {}).get("relationships", {})
+            for name, data in relationships.items():
+                if character_name.lower() in name.lower():
+                    profile["relationship_to_protagonist"] = data
+                    break
+
+            # From entity_aliases
+            aliases = content.get("world_state", {}).get("entity_aliases", {})
+            for name, alias_list in aliases.items():
+                if character_name.lower() in name.lower() or any(character_name.lower() in a.lower() for a in alias_list):
+                    profile["aliases"] = alias_list
+                    break
+
+            if len(profile) == 1:  # Only has "name"
+                return json.dumps({"warning": f"No data found for '{character_name}'. Consider using trigger_research to research this character."})
+
+            return json.dumps(profile, indent=2)
+
+    async def get_character_voice(self, character_name: str) -> str:
+        """
+        Get a character's voice profile for writing accurate dialogue.
+        Returns speech patterns, verbal tics, vocabulary level, and example dialogue.
+        Use this before writing dialogue for a specific character.
+        """
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await db.execute(stmt)
+            bible = result.scalar_one_or_none()
+            if not bible or not bible.content:
+                return json.dumps({"error": "No World Bible found"})
+
+            voices = bible.content.get("character_voices", {})
+            for name, data in voices.items():
+                if character_name.lower() in name.lower():
+                    return json.dumps({"character": name, "voice": data}, indent=2)
+
+            return json.dumps({"warning": f"No voice profile for '{character_name}'. Write dialogue carefully and the Archivist will capture their voice pattern after this chapter."})
+
+    async def get_active_consequences(self) -> str:
+        """
+        Get pending consequences that should be addressed in this chapter.
+        Returns costs that are due, overdue consequences, and high power debt.
+        Use this to ensure consequences aren't forgotten.
+        """
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await db.execute(stmt)
+            bible = result.scalar_one_or_none()
+            if not bible or not bible.content:
+                return json.dumps({"error": "No World Bible found"})
+
+            content = bible.content
+            stakes = content.get("stakes_and_consequences", content.get("stakes_tracking", {}))
+
+            active = {
+                "pending_consequences": stakes.get("pending_consequences", []),
+                "power_usage_debt": {k: v for k, v in stakes.get("power_usage_debt", {}).items()
+                                    if isinstance(v, dict) and v.get("strain_level") in ("high", "critical")},
+                "recent_costs": stakes.get("costs_paid", [])[-3:],  # Last 3 costs for reference
+                "recent_near_misses": stakes.get("near_misses", [])[-2:],  # Last 2 for tension
+            }
+
+            # Add butterfly effects that might materialize
+            butterfly = content.get("divergences", {}).get("butterfly_effects", [])
+            unmaterialized = [b for b in butterfly if isinstance(b, dict) and not b.get("materialized", False)]
+            if unmaterialized:
+                active["pending_butterfly_effects"] = unmaterialized
+
+            return json.dumps(active, indent=2)
+
+    async def get_divergence_ripples(self) -> str:
+        """
+        Get active divergences and their predicted ripple effects.
+        Shows what changes from canon have been made and what consequences are predicted.
+        Use this to weave divergence consequences into the narrative naturally.
+        """
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await db.execute(stmt)
+            bible = result.scalar_one_or_none()
+            if not bible or not bible.content:
+                return json.dumps({"error": "No World Bible found"})
+
+            divergences = bible.content.get("divergences", {})
+            active_divs = [d for d in divergences.get("list", [])
+                          if isinstance(d, dict) and d.get("status") in ("active", "escalating")]
+            butterfly = divergences.get("butterfly_effects", [])
+
+            return json.dumps({
+                "active_divergences": active_divs,
+                "butterfly_effects": butterfly,
+                "total_divergences": len(divergences.get("list", [])),
+                "escalating_count": sum(1 for d in active_divs if d.get("status") == "escalating")
+            }, indent=2)
+
+    async def get_faction_overview(self) -> str:
+        """
+        Get a quick overview of all factions, their disposition to protagonist, and territory.
+        Use this for scenes involving faction politics or territorial awareness.
+        """
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await db.execute(stmt)
+            bible = result.scalar_one_or_none()
+            if not bible or not bible.content:
+                return json.dumps({"error": "No World Bible found"})
+
+            content = bible.content
+            factions = content.get("world_state", {}).get("factions", {})
+            territory = content.get("world_state", {}).get("territory_map", {})
+
+            overview = {}
+            for name, data in factions.items():
+                if isinstance(data, dict):
+                    overview[name] = {
+                        "type": data.get("type", "unknown"),
+                        "disposition_to_protagonist": data.get("disposition_to_protagonist", "unknown"),
+                        "headquarters": data.get("headquarters", "unknown"),
+                        "leader": data.get("hierarchy", ["unknown"])[0] if data.get("hierarchy") else "unknown",
+                        "member_count": len(data.get("complete_member_roster", [])),
+                    }
+
+            return json.dumps({
+                "factions": overview,
+                "territory_map": territory
+            }, indent=2)
+
+    async def validate_power_usage(self, character_name: str, power_or_technique: str) -> str:
+        """
+        Check if a power or technique is documented in the World Bible for a character.
+        Returns whether the power is valid, any limitations, and usage notes.
+        Use this before writing power usage to ensure canonical accuracy.
+        """
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await db.execute(stmt)
+            bible = result.scalar_one_or_none()
+            if not bible or not bible.content:
+                return json.dumps({"error": "No World Bible found"})
+
+            content = bible.content
+            search_term = power_or_technique.lower()
+
+            # Check character_sheet.powers (for protagonist)
+            char_name = content.get("character_sheet", {}).get("name", "")
+            if character_name.lower() in char_name.lower():
+                powers = content.get("character_sheet", {}).get("powers", {})
+                for pname, pdesc in powers.items():
+                    if search_term in pname.lower() or search_term in str(pdesc).lower():
+                        # Also check power_origins for details
+                        for source in content.get("power_origins", {}).get("sources", []):
+                            if isinstance(source, dict):
+                                techniques = source.get("canon_techniques", [])
+                                for tech in techniques:
+                                    if isinstance(tech, dict) and search_term in tech.get("name", "").lower():
+                                        return json.dumps({
+                                            "valid": True,
+                                            "power": pname,
+                                            "technique_details": tech,
+                                            "mastery": source.get("oc_current_mastery", "unknown"),
+                                            "weaknesses": source.get("weaknesses_and_counters", [])
+                                        }, indent=2)
+                        return json.dumps({"valid": True, "power": pname, "description": pdesc}, indent=2)
+
+            # Check world_state.characters for other characters
+            characters = content.get("world_state", {}).get("characters", {})
+            for cname, cdata in characters.items():
+                if character_name.lower() in cname.lower() and isinstance(cdata, dict):
+                    char_powers = cdata.get("powers", [])
+                    if isinstance(char_powers, list):
+                        for p in char_powers:
+                            if search_term in str(p).lower():
+                                return json.dumps({"valid": True, "character": cname, "power": p}, indent=2)
+                    elif isinstance(char_powers, dict):
+                        for pname, pdesc in char_powers.items():
+                            if search_term in pname.lower():
+                                return json.dumps({"valid": True, "character": cname, "power": pname, "description": pdesc}, indent=2)
+
+            # Check magic system rules
+            magic = content.get("world_state", {}).get("magic_system", {})
+            for system_name, system_data in magic.items():
+                if isinstance(system_data, dict) and search_term in json.dumps(system_data).lower():
+                    return json.dumps({"valid": "check_rules", "system": system_name, "rules": system_data}, indent=2)
+
+            return json.dumps({
+                "valid": False,
+                "warning": f"Power/technique '{power_or_technique}' not found for '{character_name}'. "
+                           f"This may be an undocumented ability. Consider using trigger_research or "
+                           f"checking power_origins.sources for the correct technique name."
+            })

@@ -4,6 +4,7 @@ import re
 import json
 from typing import List, Any, Dict
 from google.adk import Agent
+from google.genai import types as genai_types
 from google.adk.agents.parallel_agent import ParallelAgent
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.tools import google_search
@@ -635,6 +636,8 @@ THESE FIELDS ARE REQUIRED. FAILURE TO POPULATE BLOCKS STORY GENERATION:
 2. **character_sheet.archetype** - Brief archetype (e.g., "The Shadow Guardian")
 3. **character_sheet.status** - At least {{health, mental_state, power_level}}
 4. **power_origins.sources[0]** - Must include: canon_techniques (array of strings), combat_style (string), signature_moves (array of STRINGS ONLY - NOT objects)
+5. **character_voices** - At least 5 key characters with speech_patterns, vocabulary_level, verbal_tics
+6. **character_sheet_relationships** - Protagonist's family, team, and key relationship network
 
 DO NOT PROCEED UNTIL YOU HAVE POPULATED ALL OF THE ABOVE.
 
@@ -699,6 +702,16 @@ Replace the old approach of calling `update_bible` tools with these JSON fields:
 - **meta_story_start_date** → story start date
 - **knowledge_meta_knowledge_forbidden** → list of forbidden knowledge
 - **knowledge_common_knowledge** → list of common knowledge
+- **character_voices** → dict of character voice profiles
+- **character_sheet_relationships** → dict of protagonist's relationships
+- **character_sheet_knowledge** → list of things protagonist knows at start
+- **canon_character_integrity_protected** → list of anti-Worfing character protections
+- **knowledge_character_secrets** → dict of per-character secrets
+- **knowledge_character_limits** → dict of per-character knowledge limits
+- **upcoming_canon_events** → list of canon events approaching story start
+- **power_interactions** → list of cross-power interaction rules
+- **world_state_magic_system** → dict of power system rules per universe
+- **world_state_entity_aliases** → dict of character name variants
 
 **CANON TIMELINE EVENTS** (populate `canon_timeline_events` array):
 Each timeline event should look like:
@@ -1038,9 +1051,62 @@ Before EACH `update_bible` call, verify:
    - knowledge_meta_knowledge_forbidden: Reader-only knowledge (e.g., "Shards", "Entities")
    - knowledge_common_knowledge: Public facts everyone in-universe knows
 
-7. **OUTPUT JSON**
-   Return a single LoreKeeperOutput JSON object with all populated fields.
-   Omit fields that have no data (use empty lists/dicts for defaults).
+7. **POPULATE CHARACTER VOICES (CRITICAL FOR DIALOGUE)**
+   For ALL major characters the OC will interact with, populate character_voices:
+   - Family members, teammates, mentors, antagonists, recurring characters
+   - Include: speech_patterns, vocabulary_level, verbal_tics, emotional_tells, example_dialogue
+   - The Storyteller CANNOT write accurate dialogue without these profiles
+   - AIM FOR 5+ character voices minimum
+
+8. **POPULATE OC'S RELATIONSHIP NETWORK**
+   Populate character_sheet_relationships with protagonist's starting relationships:
+   - All family members (blood, adopted, married into)
+   - Team members and allies
+   - Known enemies and rivals
+   - Each needs: type, relation, trust, dynamics, living_situation
+   - This is ESSENTIAL - the Storyteller needs to know who the OC knows
+
+9. **POPULATE PROTAGONIST STARTING KNOWLEDGE**
+   Populate character_sheet_knowledge with what the OC would know at story start:
+   - Common knowledge about the world (public heroes, known threats)
+   - Personal knowledge (family secrets, power awareness)
+   - Professional/school knowledge relevant to their situation
+
+10. **POPULATE ANTI-WORFING PROTECTIONS**
+    Populate canon_character_integrity_protected for 3-5 major canon characters:
+    - Include: name, minimum_competence, signature_moments, intelligence_level, anti_worf_notes
+    - Focus on characters the OC is most likely to interact with or fight
+    - This prevents the story from making powerful characters look weak
+
+11. **POPULATE CHARACTER SECRETS AND KNOWLEDGE LIMITS**
+    From research, populate knowledge_character_secrets and knowledge_character_limits:
+    - Secrets: What major characters are hiding and from whom
+    - Knowledge limits: What each character knows, doesn't know, and suspects
+    - CRITICAL for preventing knowledge boundary violations in narrative
+
+12. **POPULATE UPCOMING CANON EVENTS**
+    From canon_timeline_events, extract events that are "upcoming" relative to story_start_date:
+    - Populate upcoming_canon_events with events approaching within the first story arc
+    - Include: date, event, universe, importance, integration_notes (how to weave into story)
+
+13. **POPULATE POWER SYSTEM RULES**
+    Populate world_state_magic_system with detailed power system mechanics per universe:
+    - System name, core rules with exceptions, limitations with reasons, power scaling info
+    - In crossover stories, populate power_interactions for how systems interact
+
+14. **POPULATE ENTITY ALIASES**
+    Populate world_state_entity_aliases with character name variants:
+    - All characters who go by multiple names (civilian/hero/villain)
+    - Include nicknames, titles, code names
+    - This prevents AI confusion when characters are referred to differently
+
+15. **OUTPUT JSON**
+    Return a single LoreKeeperOutput JSON object with ALL populated fields.
+    New fields to include: character_voices, character_sheet_relationships,
+    character_sheet_knowledge, canon_character_integrity_protected,
+    knowledge_character_secrets, knowledge_character_limits, upcoming_canon_events,
+    power_interactions, world_state_magic_system, world_state_entity_aliases.
+    Omit fields that have no data (use empty lists/dicts for defaults).
 
 **TIMELINE PRIORITY:**
 The canon_timeline_events array is ESSENTIAL. Populate with AT LEAST 10-20 major dated events.
@@ -1082,6 +1148,11 @@ automatically process your output to populate the World Bible.
 ✓ character_status - Initial status dict (health, mental_state, power_level)
 ✓ character_powers - DICT OF POWER DESCRIPTIONS (NOT a string!)
 ✓ power_origins_sources - At least one power origin with full structure
+✓ character_voices - Voice profiles for 5+ key characters
+✓ character_sheet_relationships - OC's initial relationship network
+✓ canon_character_integrity_protected - Anti-Worfing rules for 3-5 major characters
+✓ knowledge_character_secrets - Per-character secrets
+✓ knowledge_character_limits - Per-character knowledge limits
 
 **CHARACTER POWERS FORMAT (ENFORCED):**
 ```json
@@ -1130,6 +1201,17 @@ def create_midstream_lore_keeper(story_id: str) -> Agent:
         before_agent_callback=before_timing,
         after_agent_callback=after_timing,
         on_tool_error_callback=tool_error_fallback,
+        # FIX #38: Force tool calling — without this, Gemini defaults to AUTO
+        # mode and generates text summaries instead of calling update_bible.
+        # mode=ANY forces the model to call a tool on every turn.
+        generate_content_config=genai_types.GenerateContentConfig(
+            tool_config=genai_types.ToolConfig(
+                function_calling_config=genai_types.FunctionCallingConfig(
+                    mode="ANY",
+                    allowed_function_names=["update_bible"],
+                )
+            )
+        ),
         instruction="""
 You are a LORE KEEPER performing a MID-STREAM research update.
 

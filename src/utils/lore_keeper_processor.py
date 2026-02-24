@@ -66,6 +66,12 @@ async def apply_lore_keeper_output(story_id: str, output: LoreKeeperOutput) -> D
                 content["canon_timeline"] = {"events": []}
             if "knowledge_boundaries" not in content:
                 content["knowledge_boundaries"] = {}
+            if "character_voices" not in content:
+                content["character_voices"] = {}
+            if "canon_character_integrity" not in content:
+                content["canon_character_integrity"] = {"protected_characters": []}
+            if "upcoming_canon_events" not in content:
+                content["upcoming_canon_events"] = {"events": [], "integration_notes": ""}
 
             # Apply Character Sheet
             _apply_character_sheet(content, output, results)
@@ -84,6 +90,17 @@ async def apply_lore_keeper_output(story_id: str, output: LoreKeeperOutput) -> D
 
             # Apply Knowledge Boundaries
             _apply_knowledge_boundaries(content, output, results)
+
+            # Apply new World Bible population fields
+            _apply_character_voices(content, output, results)
+            _apply_character_relationships(content, output, results)
+            _apply_character_knowledge(content, output, results)
+            _apply_canon_character_integrity(content, output, results)
+            _apply_knowledge_secrets_and_limits(content, output, results)
+            _apply_upcoming_canon_events(content, output, results)
+            _apply_power_interactions(content, output, results)
+            _apply_magic_system(content, output, results)
+            _apply_entity_aliases(content, output, results)
 
             # Save updated Bible
             bible.content = content
@@ -193,3 +210,82 @@ def _apply_knowledge_boundaries(content: Dict, output: LoreKeeperOutput, results
     if output.knowledge_common_knowledge:
         content["knowledge_boundaries"]["common_knowledge"] = output.knowledge_common_knowledge
         results["updates_applied"].append("knowledge_boundaries.common_knowledge")
+
+
+def _apply_character_voices(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply initial character voice profiles."""
+    if output.character_voices:
+        if "character_voices" not in content:
+            content["character_voices"] = {}
+        content["character_voices"].update(output.character_voices)
+        results["updates_applied"].append("character_voices")
+
+
+def _apply_character_relationships(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply protagonist's initial relationship network."""
+    if output.character_sheet_relationships:
+        if "relationships" not in content["character_sheet"]:
+            content["character_sheet"]["relationships"] = {}
+        content["character_sheet"]["relationships"].update(output.character_sheet_relationships)
+        results["updates_applied"].append("character_sheet.relationships")
+
+
+def _apply_character_knowledge(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply protagonist's starting knowledge."""
+    if output.character_sheet_knowledge:
+        content["character_sheet"]["knowledge"] = output.character_sheet_knowledge
+        results["updates_applied"].append("character_sheet.knowledge")
+
+
+def _apply_canon_character_integrity(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply anti-Worfing rules for protected characters."""
+    if output.canon_character_integrity_protected:
+        if "canon_character_integrity" not in content:
+            content["canon_character_integrity"] = {}
+        content["canon_character_integrity"]["protected_characters"] = output.canon_character_integrity_protected
+        results["updates_applied"].append("canon_character_integrity.protected_characters")
+
+
+def _apply_knowledge_secrets_and_limits(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply per-character secrets and knowledge limits."""
+    if output.knowledge_character_secrets:
+        content["knowledge_boundaries"]["character_secrets"] = output.knowledge_character_secrets
+        results["updates_applied"].append("knowledge_boundaries.character_secrets")
+
+    if output.knowledge_character_limits:
+        content["knowledge_boundaries"]["character_knowledge_limits"] = output.knowledge_character_limits
+        results["updates_applied"].append("knowledge_boundaries.character_knowledge_limits")
+
+
+def _apply_upcoming_canon_events(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply upcoming canon events the story should address."""
+    if output.upcoming_canon_events:
+        if "upcoming_canon_events" not in content:
+            content["upcoming_canon_events"] = {"events": [], "integration_notes": ""}
+        content["upcoming_canon_events"]["events"] = output.upcoming_canon_events
+        results["updates_applied"].append("upcoming_canon_events")
+
+
+def _apply_power_interactions(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply power interaction rules for crossover stories."""
+    if output.power_interactions:
+        content["power_origins"]["power_interactions"] = output.power_interactions
+        results["updates_applied"].append("power_origins.power_interactions")
+
+
+def _apply_magic_system(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply magic/power system rules per universe."""
+    if output.world_state_magic_system:
+        if "magic_system" not in content["world_state"]:
+            content["world_state"]["magic_system"] = {}
+        content["world_state"]["magic_system"].update(output.world_state_magic_system)
+        results["updates_applied"].append("world_state.magic_system")
+
+
+def _apply_entity_aliases(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply entity alias mappings."""
+    if output.world_state_entity_aliases:
+        if "entity_aliases" not in content["world_state"]:
+            content["world_state"]["entity_aliases"] = {}
+        content["world_state"]["entity_aliases"].update(output.world_state_entity_aliases)
+        results["updates_applied"].append("world_state.entity_aliases")
