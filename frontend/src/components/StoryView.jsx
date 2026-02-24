@@ -626,10 +626,12 @@ export default function StoryView({ engine }) {
                       <div key={i} className="text-gray-400 leading-relaxed">
                         {msg.split('\n').map((line, j) => (
                           <div key={j} className={
-                            line.includes('✓') ? 'text-emerald-400/80' :
+                            line.includes('⚠') || line.includes('LEAKAGE') ? 'text-orange-400/90 font-semibold' :
+                            line.includes('✓') || line.includes('✅') ? 'text-emerald-400/80' :
                             line.includes('✗') || line.includes('Failed') ? 'text-red-400/80' :
                             line.includes('→') || line.includes('Researching') ? 'text-cyan-300/70' :
                             line.includes('Found') || line.includes('gaps') ? 'text-amber-300/70' :
+                            line.includes('⚙') ? 'text-violet-400/60' :
                             'text-gray-500'
                           }>{line}</div>
                         ))}

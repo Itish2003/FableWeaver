@@ -32,6 +32,7 @@ export function useFableEngine() {
 
   const ws = useRef(null);
   const bufferRef = useRef('');
+  const turnActiveRef = useRef(false);  // Tracks if we're mid-turn (prevents heartbeat clearing)
   
   // Payload to send upon connection (for new games)
   const initPayloadRef = useRef(null);
@@ -150,10 +151,19 @@ export function useFableEngine() {
       case 'status':
         if (data.status === 'processing') {
           setStatus('processing');
-          setCurrentText('');
-          bufferRef.current = '';
-          setQuestions(null);
-          setSystemMessages([]);  // Clear system log on new turn
+          // Only clear buffers on the FIRST processing status of a new turn
+          // turnActiveRef prevents heartbeats from wiping accumulated system messages
+          if (!turnActiveRef.current) {
+            turnActiveRef.current = true;
+            bufferRef.current = '';
+            setCurrentText('');
+            setQuestions(null);
+            setSystemMessages([]);
+          }
+          // Show agent transition progress in system log
+          if (data.detail) {
+            setSystemMessages(prev => [...prev, `⚙ ${data.detail}`]);
+          }
         }
         break;
       case 'content_delta':
@@ -173,7 +183,16 @@ export function useFableEngine() {
           }
         }
         break;
+      case 'context_leakage_alert':
+        // Archivist detected cross-universe terminology in Bible update
+        setSystemMessages(prev => [
+          ...prev,
+          `⚠ CONTEXT LEAKAGE: ${data.details || 'Cross-universe terminology detected.'}`,
+          `  ${data.hint || 'Use /undo if the correction looks wrong.'}`
+        ]);
+        break;
       case 'turn_complete':
+        turnActiveRef.current = false;
         setStatus('connected');
         processTurnComplete();
         if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
@@ -186,6 +205,7 @@ export function useFableEngine() {
         }
         break;
       case 'error':
+        turnActiveRef.current = false;
         setError(data.message);
         setStatus('error');
         break;
