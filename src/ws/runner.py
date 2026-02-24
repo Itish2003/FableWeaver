@@ -137,6 +137,10 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                             # ARCHIVIST STRUCTURED OUTPUT PROCESSING
                             logger.log("archivist_output", f"Received Archivist output: {text_chunk[:500]}...")
                             await _process_archivist_output(ctx.story_id, text_chunk, ctx.websocket)
+                        elif event_author == "lore_keeper" or "lore_keeper" in event_author.lower():
+                            # LORE KEEPER STRUCTURED OUTPUT PROCESSING
+                            logger.log("lore_keeper_output", f"Received Lore Keeper output: {text_chunk[:500]}...")
+                            await _process_lore_keeper_output(ctx.story_id, text_chunk, ctx.websocket)
                         else:
                             # Log research agent output for debugging but don't send to user
                             logger.log("research_output", f"[{event_author}] {text_chunk[:200]}...")
@@ -370,3 +374,26 @@ async def _process_archivist_output(story_id: str, text_chunk: str, websocket=No
         logger.log("archivist_json_error", f"Failed to parse Archivist JSON: {e}")
     except Exception as e:
         logger.log("archivist_error", f"Error processing Archivist output: {e}")
+
+
+async def _process_lore_keeper_output(story_id: str, text_chunk: str, websocket=None) -> None:
+    """Parse and apply the Lore Keeper's LoreKeeperOutput JSON structured output.
+
+    The Lore Keeper outputs structured data that is converted to WorldBible format.
+    """
+    try:
+        from src.schemas import LoreKeeperOutput
+        from src.utils.lore_keeper_processor import apply_lore_keeper_output
+
+        output_json = json.loads(text_chunk)
+        output = LoreKeeperOutput(**output_json)
+
+        result = await apply_lore_keeper_output(story_id, output)
+        if result["success"]:
+            logger.log("lore_keeper_applied", f"Applied {len(result['updates_applied'])} Bible updates: {result['updates_applied']}")
+        else:
+            logger.log("lore_keeper_error", f"Failed to apply Lore Keeper output: {result['errors']}")
+    except json.JSONDecodeError as e:
+        logger.log("lore_keeper_json_error", f"Failed to parse Lore Keeper JSON: {e}")
+    except Exception as e:
+        logger.log("lore_keeper_error", f"Error processing Lore Keeper output: {e}")

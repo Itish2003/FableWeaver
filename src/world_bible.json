@@ -1,324 +1,128 @@
 {
   "meta": {
-    "title": "Irregular at Magic High School AU \u2014 Kudou Kageaki (The Elder Kudou)",
+    "title": "Irregular at Magic High School AU \u2014 Kudou Kageaki (The Existential Anomaly)",
     "universes": [
       "The Irregular at Magic High School",
       "Jujutsu Kaisen"
     ],
-    "timeline_deviation": "First High School enrollment",
-    "genre": "Dark Fantasy",
-    "theme": "Control vs Contamination, Family as obligation, Existential anomalies, Containment of self",
+    "timeline_deviation": "city",
+    "genre": "dark",
+    "theme": "The burden of absolute power, Monstrosity in the guise of nobility, Inevitable escalation, Institutionalized anomalies",
     "story_start_date": "",
-    "current_story_date": "April 5, 2095",
+    "current_story_date": "March 21, 2095",
     "story_universe": "The Irregular at Magic High School",
-    "character_origin": "Kudou Family (Mahouka)",
+    "character_origin": "The Irregular at Magic High School (Kudou Family)",
     "power_level": "city",
-    "isolation_strategy": false,
+    "isolation_strategy": true,
     "story_tone": "dark",
     "themes": [
-      "Control vs Contamination",
-      "Family as obligation",
-      "Existential anomalies in modern magic theory",
-      "Containment of self",
-      "Self-fragmentation and soul-consumption",
-      "The parallel burdens of the 'Irregular' and the 'Anomalous'",
-      "Gradual discovery of existential horror"
+      "The burden of absolute power",
+      "Monstrosity in the guise of nobility",
+      "Inevitable escalation",
+      "Institutionalized anomalies"
     ],
     "research_focus": [
-      "Mahouka Pushion/Psion theory",
-      "Parasite biology and Information-Body mechanics",
-      "Ancient Magic vs Modern Magic",
-      "Kudou family mental interference techniques",
-      "JJK technique mechanics translated to information-dimension logic",
-      "First High School academic curriculum and CAD engineering",
-      "Student council and school committee politics",
-      "Course 1 vs. Course 2 social dynamics",
-      "Tactical synergy between Decomposition/Regrowth and Shadow/Parasite manipulation"
+      "Pushion (Information Particles of Emotion) dynamics in Mahouka lore",
+      "Interaction between Modern Magic CADs and Psion-based Summoning",
+      "Integration of Mahoraga's adaptation into the Eidos-rewriting framework"
     ],
-    "power_limitations": "Constant Psion/Pushion suppression required; high psychological strain from managing autonomous Pushion-entities; risk of shadow-sink if Psion reserves are depleted; creation of parasites causes permanent or temporary depletion of the user's own Information Body integrity.",
-    "user_intent": "The story begins at the start of the First High School enrollment arc, following Kudou Kageaki, the elder brother of Minoru Kudou and the designated heir of the Kudou family. He acts as a primary partner and ally alongside Tatsuya Shiba, forming a formidable duo that navigates the events of the series from the beginning. Kageaki's power is a dark existential anomaly: he creates Artificial Parasites from his own Psions, effectively fragmenting his own information-body to manifest entities and the Ten Shadows Technique. The narrative utilizes a 'Gradual Discovery' approach, where the full extent of his self-fragmentation and the true nature of his 'Shadows' are revealed slowly to both the characters and the reader. As a Course 1 'Bloom' with high social standing, he provides a political and tactical counterpoint to Tatsuya's 'Weed' status, while secretly operating as an Anomalous Strategic-Class asset in a state of constant self-containment."
+    "power_limitations": "None. The user has full access to the potential of both systems without the typical jujutsu drawbacks or mental strain. The only limit is the user's own intent.",
+    "user_intent": "Kudou Kageaki is the elder brother of Minoru Kudou and the designated heir of the Kudou Family. His powers, Cursed Spirit Manipulation and the Ten Shadows Technique, have been re-contextualized as a unique evolution of Kudou mental interference magic, fueled by Psions and Pushions rather than Cursed Energy. This makes his abilities native to the Irregular universe. He operates at a Strategic-Class level with no drawbacks, capable of manifesting his full potential. The story follows a dark tone where his power is not a curse to be suppressed, but a legitimate and terrifying asset of the Kudou bloodline."
   },
   "character_sheet": {
-    "name": "",
-    "archetype": "",
+    "name": "Kudou Kageaki",
+    "archetype": "The Monstrous Heir / Institutionalized Anomaly",
     "status": {
-      "mental_state": "Disciplined but increasingly strained by the complexity of maintaining his fragmented soul in public.",
-      "health": "Peak physical condition; under constant spiritual strain due to self-fragmentation.",
-      "power_level": "Anomalous Strategic-Class",
-      "power_strain": "Low (manual suppression active)",
-      "social_standing": "Elite Course 1 (Bloom), respected/feared as Kudou heir."
+      "health": "Optimal",
+      "mental_state": "Clinical, focused",
+      "academic_status": "Enrolled as a Year 1 student at First High School",
+      "power_status": "Fully operational; Rank A spirit absorbed; Mahoraga tamed"
     },
     "powers": {},
     "inventory": [],
     "relationships": {
-      "Shiba_Miyuki": {
-        "relation": "Classmate / Ally's Sister",
-        "type": "ally",
-        "dynamics": "Professional respect. Miyuki recognizes Kageaki as someone Tatsuya respects, which grants him her cautious trust. Kageaki treats her with the etiquette expected of a Master Clan heir.",
-        "trust": "Medium",
-        "role_in_story": "Ally"
-      },
-      "Kudou_Minoru": {
-        "dynamics": "Kageaki is extremely protective of Minoru, having accepted the burden of being the designated heir and experimental success to allow Minoru a semblance of a normal life. Kageaki serves as Minoru's containment officer during flares.",
-        "living_situation": "Kageaki (Dormitory), Minoru (Estate/Middle School)",
-        "trust": "Complete",
-        "family_branch": "Immediate brother",
-        "type": "family",
-        "relation": "Younger brother",
-        "role_in_story": "Motivation / Prot\u00e9g\u00e9 / Liability"
-      },
-      "Shiba Tatsuya": {
-        "type": "neutral",
-        "relation": "Classmate / Mirror-Anomalous",
-        "trust": "low",
-        "knows_secret_identity": false,
-        "dynamics": "Mutual recognition of 'hidden' natures. Kageaki perceives Tatsuya as a 'void' or 'deletion' in the information dimension, while Tatsuya likely perceives Kageaki's artificial fragmentation. A silent, tense acknowledgment of parity.",
-        "last_interaction": "Chapter 1 - Silent eye contact in the hallway following the Morisaki incident."
-      },
       "Kudou Retsu": {
         "type": "family",
-        "relation": "Grandfather / Superior",
+        "relation": "grandfather",
         "trust": "medium",
-        "dynamics": "Strict hierarchical reporting. Kageaki acts as Retsu's 'Shadow' and secret strategic asset, providing intel on school-level anomalies. The relationship is defined by duty and containment.",
-        "last_interaction": "Chapter 1 - Status report regarding the Shiba siblings."
+        "dynamics": "Mutual respect based on power; Retsu views Kageaki as his greatest success, while Kageaki views Retsu as a pragmatist to be managed.",
+        "last_interaction": "Chapter 1 - Demonstration of Mahoraga in the Ninth Institute"
+      },
+      "Kudou Makoto": {
+        "type": "family",
+        "relation": "father",
+        "trust": "low",
+        "dynamics": "Strained; Makoto is visibly intimidated by Kageaki's 'monstrosity' and clinical detachment.",
+        "last_interaction": "Chapter 1 - Supervision of the Rank A spirit absorption"
+      },
+      "Kudou Minoru": {
+        "type": "family",
+        "relation": "younger brother",
+        "trust": "medium",
+        "dynamics": "Protective but distant; Kageaki's presence as the primary heir allows Minoru a different trajectory, though both are heavily managed by the family.",
+        "last_interaction": "Chapter 1 - Mentioned as following the original story path while Kageaki heads to First High"
       }
     },
-    "knowledge": [],
-    "identities": {
-      "strategic_asset": {
-        "reputation": "An unlisted, anomalous threat capable of existential contamination.",
-        "activities": [
-          "Containing spiritual anomalies",
-          "Autonomous strategic defense (hidden)",
-          "Researching self-fragmentation stabilization"
-        ],
-        "type": "strategic_asset",
-        "name": "Shadow of the Ninth",
-        "known_by": [
-          "Kudou Retsu",
-          "Kudou Makoto",
-          "Fujibayashi Kyouko"
-        ],
-        "is_public": false,
-        "base_of_operations": "Ninth Institute (Clandestine)"
-      }
-    }
+    "knowledge": []
   },
   "power_origins": {
-    "sources": [
-      {
-        "canon_scene_examples": [
-          {
-            "outcome": "Megumi nearly crushed by mass; forces battle into water to ruin opponent's paper contracts.",
-            "source": "[MANGA - Ch 170-172]",
-            "power_used": "Shadow Storage / Chimera Shadow Garden",
-            "scene": "The Gymnassium Showdown",
-            "how_deployed": "Megumi expands a sea of liquid shadow in a gym, dropping cars into his shadow to pin himself and his opponent. Demonstrated the physical weight burden of the technique.",
-            "opponent_or_context": "Megumi vs Reggie Star"
-          },
-          {
-            "outcome": "Mahoraga adapts to Unlimited Void before even being summoned.",
-            "source": "[MANGA - Ch 230-235]",
-            "power_used": "Burden of Adaptation (Mahoraga)",
-            "scene": "Shinjuku Showdown: The Soul Burden",
-            "how_deployed": "Sukuna places the Mahoraga wheel on Megumi's soul within the shadow. The fragmented soul bears the burden of adaptation to Gojo's 'Unlimited Void' while Sukuna fights.",
-            "opponent_or_context": "Sukuna vs Satoru Gojo"
-          },
-          {
-            "outcome": "Target paralyzed; ally evacuated.",
-            "source": "[ANIME]",
-            "power_used": "Nue (Aerial Strike)",
-            "scene": "The Fear of the Cursed Womb",
-            "how_deployed": "Megumi summons Nue to carry an ally and deliver electrical paralysis to a target. Shows the aerial utility of the technique.",
-            "opponent_or_context": "Early combat encounters"
-          }
-        ],
-        "original_wielder": "Megumi Fushiguro / Sukuna (Zenin Clan)",
-        "signature_moves": [
-          {
-            "description": "Twin wolves for tracking/shredding. Totality inherits power upon death.",
-            "name": "Divine Dogs: Totality"
-          },
-          {
-            "description": "Aerial support bird with electrical vibration discharge.",
-            "name": "Nue"
-          },
-          {
-            "name": "Mahoraga",
-            "description": "Ultimate adaptation engine. Analyzes and rewrites magic sequences."
-          },
-          {
-            "name": "Rabbit Escape",
-            "description": "Swarm distraction using hundreds of rabbit clones. Overwhelms Elemental Sight."
-          }
-        ],
-        "mastery_progression": [
-          "Level 1: Basic summoning (Divine Dogs, Nue)",
-          "Level 2: Shadow inventory/weight bearing management",
-          "Level 3: Multi-summoning / Extension techniques (Winged Toads)",
-          "Level 4: Partial manifestation / Burden of Adaptation usage",
-          "Level 5: Chimera Shadow Garden (Zone Interference)"
-        ],
-        "power_name": "Ten Shadows Technique (Eidos-Fragmentation Model)",
-        "source_universe": "Jujutsu Kaisen",
-        "combat_style": "Tactical / Adaptive / Hybrid. Kageaki uses shadows for inventory storage (weapons, CADs) and stealth, while deploying semi-autonomous 'Artificial Parasites' to flank or neutralize opponent magic. High synergy with physical combat.",
-        "weaknesses_and_counters": [
-          "Permanent loss of Eidos mass if a shadow is destroyed.",
-          "Physical burden of stored mass (Shadow weight).",
-          "MCA Overheat from managing multiple autonomous fragments.",
-          "One-shot requirement to defeat Mahoraga before adaptation."
-        ]
-      }
-    ],
+    "sources": [],
     "power_interactions": [],
     "theoretical_evolutions": [],
     "usage_tracking": {
-      "Divine_Dogs": {
+      "Cursed Spirit Manipulation": {
         "last_chapter": 1,
-        "strain_level": "low"
+        "strain_level": "medium"
+      },
+      "Ten Shadows Technique (Nue/Mahoraga)": {
+        "last_chapter": 1,
+        "strain_level": "medium"
       }
     }
   },
   "world_state": {
     "characters": {},
-    "factions": {
-      "Kudou_Family": {
-        "disposition_to_protagonist": "Expectant / Demanding",
-        "current_goals": [
-          "Evaluate the new generation of magicians",
-          "Monitor Shiba siblings"
-        ]
-      }
-    },
+    "factions": {},
     "locations": {
-      "Shiba_Residence": {
-        "controlled_by": "Shiba Siblings / Yotsuba Family (Shadow)",
-        "name": "Shiba Residence",
-        "source": "[WIKI]",
-        "type": "building",
-        "atmosphere": "Quiet, minimalist, high security but domestic.",
-        "city": "Chofu, Tokyo",
-        "security_level": "high",
-        "description": "The apartment where Tatsuya and Miyuki live alone while attending First High."
+      "Ninth Institute": {
+        "atmosphere": "Sterile, high-pressure, subterranean",
+        "controlled_by": "Kudou Family",
+        "current_state": "Functional/Active"
       },
-      "Practice_Hall_1": {
-        "security_level": "medium",
-        "description": "The main combat training facility for Course 1 students. Forbidden to Course 2 students.",
-        "type": "building",
-        "atmosphere": "Hyper-competitive, electric with Psion noise.",
-        "city": "Hachioji (First High)",
-        "controlled_by": "School Admin / Course 1 Students",
-        "name": "Practice Hall 1",
-        "source": "[WIKI]"
-      },
-      "First_High_Auditorium": {
-        "atmosphere": "Weighted by expectation and stratified by the Bloom/Weed social divide.",
+      "Yokohama Exclusion Zone": {
+        "atmosphere": "Haunted, saturated with residual Pushions and Psion fallout",
+        "current_state": "Restricted ruins",
         "key_features": [
-          "Psion-interference damping fields",
-          "Ornate stage for Freshman Rep"
-        ],
-        "controlled_by": "School Admin",
-        "current_state": "Operational"
-      }
-    },
-    "territory_map": {
-      "Ninth_Institute_Nara": "Kudou Family (Clandestine)",
-      "Tokyo_Downtown": "Contested (Public Morals/State)",
-      "First_High_School": "Neutral (Academic/State control)",
-      "Kudou_Estate": "Kudou Family"
-    },
-    "magic_system": {
-      "Artificial_Parasite_Manifestation": {
-        "system_name": "Ten Shadows (Kudou Variant)",
-        "universe": "Mahouka x JJK Crossover",
-        "core_rules": [
-          {
-            "description": "Kageaki shears off chunks of his own Psion/Pushion reserves to create Independent Information Bodies (Artificial Parasites).",
-            "name": "Self-Fission / Fragmentation",
-            "source": "[PROMPT/THEORETICAL]"
-          },
-          {
-            "source": "[THEORETICAL]",
-            "name": "Shadow as Gateway to Idea",
-            "description": "Kageaki uses shadows as 'areas of low photon density' to manifest his fragmented Eidos without a physical host."
-          }
-        ],
-        "limitations": [
-          {
-            "type": "Existential Depletion / MCA Overheat",
-            "source": "[THEORETICAL]",
-            "reason": "Summoned Shadows reduce maximum Psion capacity and processing speed. Loss of a shadow causes 'Information Shock' to the physical brain."
-          }
+          "Destroyed dry docks",
+          "Ghostly echoes of the GAA fleet"
         ]
       }
     },
-    "entity_aliases": {
-      "Kudou_Kageaki": [
-        "Kageaki",
-        "Elder Brother",
-        "Heir of the Ninth",
-        "Shadow of the Ninth (Strategic Alias)"
-      ],
-      "Shiba_Tatsuya": [
-        "Tatsuya",
-        "Onii-sama (Miyuki only)",
-        "The Weed",
-        "Maheshvara (Secret)",
-        "Silver (CAD Engineer)"
-      ]
-    }
+    "territory_map": {},
+    "magic_system": {},
+    "entity_aliases": {}
   },
   "character_voices": {
-    "Kudou_Retsu": {
-      "example_dialogue": "'Kageaki, you are the shadow that ensures the light of the Ten Master Clans continues to shine. Never forget your weight.'",
-      "vocabulary_level": "Educated/Statesman-like",
-      "verbal_tics": "Occasional chuckles that don't reach his eyes. Hand-to-chin contemplation.",
-      "emotional_tells": "The 'Elder's' warmth can vanish instantly into a cold, military-sharp command.",
-      "topics_to_discuss": [
-        "The history of magic clans",
-        "The future of the Nine Schools Competition"
-      ],
-      "speech_patterns": "Grandfatherly but authoritative. Uses 'young man' or 'grandson.' Speaks with the weight of someone who survived the 'Nightmare of 2062.'",
-      "topics_to_avoid": [
-        "The true cruelty of the Ninth Institute's past experiments"
-      ]
-    },
     "Kudou Kageaki": {
-      "speech_patterns": "Polished, smooth, and hyper-formal in public; clinical and analytical in internal monologue.",
-      "vocabulary_level": "High/Academic/Strategic",
-      "verbal_tics": "Frequently uses containment-related metaphors (layers, loops, voids).",
-      "emotional_tells": "Psion-ripples in shadows when focus wavers; voice remains perfectly flat even when inner fragmentation strains.",
-      "example_dialogue": "\"To the hundreds of students filling the hall, this emblem was a symbol of superiority... To me, it was just another layer of containment.\""
+      "speech_patterns": "Clinical, precise, and emotionally detached. Speaks with the authority of someone who views reality as malleable data.",
+      "vocabulary_level": "Academic/Technical (Magic Theory)",
+      "verbal_tics": "Minimal; uses silence as a tool of pressure.",
+      "emotional_tells": "Eyes turn cold/still when activating high-level Pushion manipulation.",
+      "example_dialogue": "Spirits are merely external sub-processors for my will. To overwrite their Eidos is simpler than editing a sequence on a CAD."
     }
   },
   "knowledge_boundaries": {
-    "meta_knowledge_forbidden": [
-      "Tatsuya Shiba is the Strategic-Class magician Maheshvara (Initially)",
-      "The true nature of Parasites as extra-dimensional entities (Initially)",
-      "The Yotsuba family's involvement in Tatsuya's mental remodeling",
-      "The full list of JJK shikigami (Characters must discover them as Kageaki 'tames' his fragments)"
-    ],
+    "meta_knowledge_forbidden": [],
     "character_secrets": {},
     "character_knowledge_limits": {
       "Kudou Kageaki": {
         "knows": [
-          "Shiba Tatsuya's information-body signature resembles 'deletion' or a void.",
-          "Shiba Miyuki's Psion coherence is high enough to cause localized environmental freeze/interference.",
-          "Tatsuya can neutralize threats (Morisaki) without standard systematic magic."
+          "The specific Pushion frequency of the 'ghosts' left behind by the Material Burst at Yokohama.",
+          "Tatsuya Shiba's true identity as the Strategic-Class magician responsible for Scorched Halloween."
         ],
         "doesnt_know": [],
         "suspects": [
-          "The Shiba siblings are associated with a powerful clan (likely Yotsuba) given their specialized nature.",
-          "Tatsuya's 'Weed' status is a deliberate fabrication or a result of specific MCA limitations."
-        ]
-      },
-      "Shiba Tatsuya": {
-        "knows": [
-          "Kudou Kageaki is not a standard Master Clan heir; he possesses an anomalous, fragmented signature."
-        ],
-        "doesnt_know": [],
-        "suspects": [
-          "Kageaki is observing him with intent beyond academic competition."
+          "The Yotsuba are shielding Tatsuya Shiba more heavily than previously estimated by the Kudou family."
         ]
       }
     },
@@ -327,32 +131,42 @@
   "stakes_and_consequences": {
     "costs_paid": [
       {
-        "cost": "Mental strain from maintaining Shadow containment during high-stress social interaction",
+        "cost": "Minor mental strain from processing the mass memories of the drowned GAA sailors.",
         "severity": "medium",
         "chapter": 1
       },
       {
-        "cost": "Psychological strain from maintaining self-containment while exposed to Miyuki's high-output Psion environment.",
+        "cost": "Processing the concentrated despair and traumatic memories of thousands of GAA sailors during the Yokohama harvesting.",
+        "severity": "medium",
+        "chapter": 1
+      },
+      {
+        "cost": "Mental strain from processing the mass memories of the GAA sailors.",
         "severity": "medium",
         "chapter": 1
       }
     ],
     "near_misses": [
       {
-        "what_almost_happened": "Almost revealed true nature to Tatsuya via Elemental Sight contact",
+        "what_almost_happened": "The Vengeful Spirit's despair-aura nearly cracked the structural integrity of the dry dock before capture.",
         "saved_by": "Unknown",
         "chapter": 1
       },
       {
-        "what_almost_happened": "Complete exposure of Kageaki's 'Shadow' nature to Tatsuya during their initial hallway confrontation.",
-        "saved_by": "Tatsuya's own desire to maintain a low profile and Kageaki's manual suppression of the Divine Dogs' reaction.",
+        "what_almost_happened": "A Vengeful Spirit at the Yokohama dry docks nearly achieved physical manifestation through environmental Pushion saturation.",
+        "saved_by": "Kageaki manifesting a partial shadow-shackling to suppress its informational core.",
+        "chapter": 1
+      },
+      {
+        "what_almost_happened": "Tatsuya Shiba nearly detected Kageaki's presence at the gates with Elemental Sight.",
+        "saved_by": "Unknown",
         "chapter": 1
       }
     ],
     "pending_consequences": [
       {
-        "action": "Reporting the Shiba siblings' anomalous signatures to Kudou Retsu.",
-        "predicted_consequence": "Retsu will demand deeper surveillance, forcing Kageaki into conflict with Tatsuya's desire for anonymity.",
+        "action": "Harvesting the remnants of the Scorched Halloween in a restricted exclusion zone.",
+        "predicted_consequence": "Possible detection by JSDF or Yotsuba monitoring systems, leading to early scrutiny.",
         "due_by": "Chapter 5"
       }
     ],
@@ -363,140 +177,45 @@
     "jobber_prevention_rules": []
   },
   "canon_timeline": {
-    "events": [
-      {
-        "universe": "Wormverse (Mistake in prompt, correcting to Mahouka)",
-        "importance": "major",
-        "event": "The Nightmare of 2062: Great Asian Alliance attacks Yotsuba family. Kudou Retsu participates in the rescue of Maya Yotsuba.",
-        "status": "background",
-        "consequences": [
-          "Decimation of Yotsuba family",
-          "Retsu's rising influence"
-        ],
-        "date": "2062",
-        "characters_involved": [
-          "Kudou Retsu",
-          "Maya Yotsuba"
-        ],
-        "source": "[WIKI]"
-      },
-      {
-        "characters_involved": [
-          "Tatsuya Shiba",
-          "GAA Fleet"
-        ],
-        "source": "[LN]",
-        "consequences": [
-          "Introduction of hidden Strategic-Class magic in Japan"
-        ],
-        "date": "2092",
-        "status": "background",
-        "event": "Okinawa Defense Battle: Tatsuya Shiba uses Material Burst for the first time.",
-        "importance": "major",
-        "universe": "Mahouka"
-      },
-      {
-        "event": "Entrance Ceremony at First High School. Shiba siblings and Kudou Kageaki enroll.",
-        "status": "upcoming",
-        "universe": "Mahouka",
-        "importance": "major",
-        "consequences": [
-          "Start of the First High School Enrollment Arc",
-          "Formation of Kageaki-Tatsuya duo"
-        ],
-        "date": "April 5, 2095",
-        "characters_involved": [
-          "Kudou Kageaki",
-          "Tatsuya Shiba",
-          "Miyuki Shiba"
-        ],
-        "source": "[LN/PROMPT]"
-      },
-      {
-        "universe": "Mahouka",
-        "importance": "minor",
-        "event": "The Hallway Incident: Tatsuya de-escalates a Bloom/Weed conflict without magic.",
-        "status": "upcoming",
-        "consequences": [
-          "Student Council notices Tatsuya"
-        ],
-        "date": "April 5, 2095",
-        "characters_involved": [
-          "Tatsuya Shiba",
-          "Erika Chiba",
-          "Morisaki Shun"
-        ],
-        "source": "[LN]"
-      },
-      {
-        "characters_involved": [
-          "Tatsuya Shiba",
-          "Hattori Gyoubu",
-          "Saegusa Mayumi"
-        ],
-        "source": "[WIKI]",
-        "consequences": [
-          "Tatsuya joins Public Morals Committee"
-        ],
-        "date": "April 7, 2095",
-        "importance": "major",
-        "universe": "Mahouka",
-        "status": "upcoming",
-        "event": "The Mock Duel: Tatsuya defeats Vice President Hattori, demonstrating non-systematic efficiency."
-      },
-      {
-        "consequences": [
-          "Blanche/Egalite infiltration revealed"
-        ],
-        "date": "Late April 2095",
-        "characters_involved": [
-          "Mibu Sayaka",
-          "Tatsuya Shiba"
-        ],
-        "source": "[WIKI]",
-        "event": "Blanche/Egalite Agitation: Anti-magic groups target First High students.",
-        "status": "upcoming",
-        "universe": "Mahouka",
-        "importance": "major"
-      },
-      {
-        "date": "October 2095",
-        "consequences": [
-          "Shift in global power balance"
-        ],
-        "characters_involved": [
-          "Kudou Retsu",
-          "Tatsuya Shiba"
-        ],
-        "source": "[WIKI]",
-        "universe": "Mahouka",
-        "importance": "major",
-        "event": "Scorched Halloween: Public use of Strategic-Class Magic.",
-        "status": "upcoming"
-      }
-    ],
-    "current_position": "April 5, 2095 - Entrance Ceremony at First High School, The Hallway Incident",
+    "events": [],
+    "current_position": "March 21, 2095 - Scorched Halloween (Yokohama Disturbance fallout), Enrollment of the Shiba siblings at First High",
     "notes": ""
   },
   "story_timeline": {
     "events": [
       {
         "chapter": 1,
-        "event": "Entrance Ceremony at First High School",
+        "event": "Referenced the 'Scorched Halloween' (Yokohama Disturbance aftermath)",
         "type": "canon_addressed",
-        "date": "April 5, 2095"
+        "date": "March 20, 2095 - March 21, 2095"
       },
       {
         "chapter": 1,
-        "event": "The Hallway Incident",
+        "event": "Referenced Tatsuya Shiba's role as the Strategic-Class Magician of the Yotsuba",
         "type": "canon_addressed",
-        "date": "April 5, 2095"
+        "date": "March 20, 2095 - March 21, 2095"
+      },
+      {
+        "chapter": 1,
+        "event": "Scorched Halloween (Yokohama Disturbance fallout)",
+        "type": "canon_addressed",
+        "date": "March 20, 2095 - March 21, 2095"
+      },
+      {
+        "chapter": 1,
+        "event": "Enrollment of the Shiba siblings at First High",
+        "type": "canon_addressed",
+        "date": "March 20, 2095 - March 21, 2095"
       }
     ],
     "chapter_dates": [
       {
         "chapter": 1,
-        "date": "April 5, 2095"
+        "date": "March 20, 2095 - March 21, 2095"
+      },
+      {
+        "chapter": 1,
+        "date": "March 20, 2095 - March 21, 2095"
       }
     ]
   },
@@ -505,37 +224,59 @@
       {
         "id": "div_001",
         "chapter": 1,
-        "what_changed": "Kudou Kageaki actively intervened/observed the Hallway Incident, alerting Tatsuya to his presence earlier than canon.",
+        "what_changed": "Kageaki exists as a perfected heir, shifting the internal power dynamics of the Kudou family and providing them with a hidden Strategic-Class asset earlier than in canon.",
         "severity": "minor",
         "status": "active",
-        "canon_event": "Tatsuya de-escalates the Hallway Incident with Morisaki Shun; observed only by nearby students/Student Council.",
-        "cause": "Kageaki's presence as a Course 1 observer from the Kudou family adds a political layer to the incident.",
+        "canon_event": "Kudou family reliance on Minoru as the primary hope for their legacy.",
+        "cause": "The existence of Kageaki as a perfected Strategic-Class heir.",
         "ripple_effects": [
-          "The Student Council (Mayumi/Mari) notices Kageaki's interest in Tatsuya.",
-          "Tatsuya identifies Kageaki as a primary threat/asset much earlier than in canon."
+          "Minoru's role is shifted to a secondary or public-facing role.",
+          "The Kudou family acts with more covert aggression knowing they have a secret deterrent."
         ],
         "affected_canon_events": []
       },
       {
         "id": "div_002",
         "chapter": 0,
-        "what_changed": "Kageaki's internal parasites (Divine Dogs) identified Tatsuya as 'deletion' immediately, creating a predator-prey tension that didn't exist in canon.",
-        "canon_event": "Entrance ceremony is a standard introduction to school hierarchy.",
-        "cause": "Kageaki's JJK-derived sensitivity to information-body integrity.",
-        "severity": "minor",
+        "what_changed": "Kageaki is enrolling at First High as a student alongside the Shiba siblings.",
+        "canon_event": "Kudou heirs generally avoid First High or operate in the shadows during the school year.",
+        "cause": "Personal initiative to observe the 'Anomaly' (Tatsuya) and institutional placement by Retsu.",
+        "severity": "major",
         "status": "active",
         "ripple_effects": [
-          "Heightened initial tension between the two protagonists.",
-          "Kudou family becomes aware of Shiba siblings' anomalies on Day 1."
+          "Early confrontation with Tatsuya and Miyuki Shiba.",
+          "Alteration of the school's power hierarchy (Bloom vs Weed dynamics)."
         ],
+        "affected_canon_events": []
+      },
+      {
+        "id": "div_003",
+        "chapter": 1,
+        "what_changed": "Kageaki's existence as a peer to Miyuki shifts the power balance of the First Year students.",
+        "severity": "minor",
+        "status": "active",
+        "canon_event": "",
+        "cause": "OC intervention",
+        "ripple_effects": [],
+        "affected_canon_events": []
+      },
+      {
+        "id": "div_004",
+        "chapter": 1,
+        "what_changed": "The Kudou family has a direct, Strategic-Class observer within First High from day one.",
+        "severity": "minor",
+        "status": "active",
+        "canon_event": "",
+        "cause": "OC intervention",
+        "ripple_effects": [],
         "affected_canon_events": []
       }
     ],
     "butterfly_effects": [],
     "stats": {
-      "total": 2,
-      "major": 0,
-      "minor": 2
+      "total": 4,
+      "major": 1,
+      "minor": 3
     }
   },
   "upcoming_canon_events": {

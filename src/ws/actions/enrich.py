@@ -48,6 +48,31 @@ async def handle_enrich(ctx: WsSessionContext, inner_data: dict) -> ActionResult
             def should_check(categories):
                 return "all" in focuses or any(cat in focuses for cat in categories)
 
+            # Check power system
+            if should_check(["power_system", "powers", "power", "abilities"]):
+                powers = content.get("character_sheet", {}).get("powers", {})
+                sources = content.get("power_origins", {}).get("sources", [])
+                # Check for detailed power system (each source should have canonical_techniques, combat_style, signature_moves)
+                detailed_sources = [s for s in sources if isinstance(s, dict) and all(k in s for k in ["canonical_techniques", "combat_style", "signature_moves"])]
+                if len(detailed_sources) < len(sources) or len(sources) == 0:
+                    gaps.append(f"Power origins with detailed techniques - canonical sources, combat style, signature moves, and scene-level examples for each power system")
+
+            # Check characters
+            if should_check(["characters", "chars", "people", "npcs"]):
+                characters = content.get("world_state", {}).get("characters", {})
+                # Check for characters with key fields (role, universe, disposition)
+                detailed_chars = [c for c in characters.values() if isinstance(c, dict) and all(k in c for k in ["role", "disposition"])]
+                if len(detailed_chars) < 5:  # Need at least 5 detailed character entries
+                    gaps.append(f"Major characters in {', '.join(universes)} - at least 5 with role, universe, powers, relationships, and disposition to protagonist")
+
+            # Check factions
+            if should_check(["factions", "faction", "groups", "teams", "families"]):
+                factions = content.get("world_state", {}).get("factions", {})
+                # Check for factions with key fields (type, description, hierarchy)
+                detailed_factions = [f for f in factions.values() if isinstance(f, dict) and all(k in f for k in ["type", "description"])]
+                if len(detailed_factions) < 3:  # Need at least 3 detailed factions
+                    gaps.append(f"Factions and organizations in {', '.join(universes)} - at least 3 with type, description, hierarchy, disposition to protagonist")
+
             # Check locations
             if should_check(["locations", "locs", "location"]):
                 locations = content.get("world_state", {}).get("locations", {})

@@ -17,6 +17,8 @@ from .world_bible_schemas import (
     KnowledgeUpdate,
     DivergenceRefinement,
     NewDivergence,
+    # Lore Keeper output schema
+    LoreKeeperOutput,
 )
 
 # Complete World Bible Schema (Issue #11 - Schema Enforcement)
@@ -68,6 +70,8 @@ __all__ = [
     "KnowledgeUpdate",
     "DivergenceRefinement",
     "NewDivergence",
+    # Lore Keeper output schema
+    "LoreKeeperOutput",
     # Complete World Bible Schema (Issue #11)
     "WorldBibleSchema",
     "WorldMeta",

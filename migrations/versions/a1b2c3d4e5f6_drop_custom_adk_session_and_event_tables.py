@@ -23,8 +23,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_table("adk_events")
-    op.drop_table("adk_sessions")
+    op.drop_table("adk_events", if_exists=True)
+    op.drop_table("adk_sessions", if_exists=True)
 
 
 def downgrade() -> None:

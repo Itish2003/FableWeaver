@@ -11,6 +11,10 @@ from src.ws.actions import ActionResult
 
 
 async def handle_research(ctx: WsSessionContext, inner_data: dict) -> ActionResult:
+    from sqlalchemy import select
+    from src.database import AsyncSessionLocal
+    from src.models import WorldBible
+
     query = inner_data.get("query", "")
     depth = inner_data.get("depth", "quick")
     await manager.send_json({"type": "status", "status": "processing"}, ctx.websocket)
@@ -41,6 +45,11 @@ async def handle_research(ctx: WsSessionContext, inner_data: dict) -> ActionResu
             "text": f"\n--- [RESEARCH LOG: {query}]\n{result}\n-----------------------------\n\n",
             "sender": "system"
         }, ctx.websocket)
+
+        # NOTE: Research results are logged but not auto-integrated.
+        # To integrate, use /enrich to detect gaps and trigger targeted research,
+        # or manually parse research results and call BibleTools.update_bible()
+
     except Exception as e:
         await manager.send_json({"type": "error", "message": f"Research failed: {e}"}, ctx.websocket)
 
