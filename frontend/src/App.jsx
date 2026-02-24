@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useFableEngine } from './hooks/useFableEngine';
-import ConfigForm from './components/ConfigForm';
+import SetupWizard from './components/SetupWizard';
 import StoryView from './components/StoryView';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -136,14 +136,14 @@ function App() {
               exit={{ opacity: 0, scale: 0.95 }}
             >
               <div className="max-w-2xl mx-auto">
-                <button 
+                <button
                   onClick={() => setIsCreating(false)}
                   className="mb-6 text-sm flex items-center gap-2 text-slate-400 hover:text-white"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                   Cancel
                 </button>
-                <ConfigForm onInit={(u, d, i) => { engine.createNewGame(u, d, i); setIsCreating(false); }} isConnecting={false} />
+                <SetupWizard onInit={(storyId) => { engine.resumeGame(storyId); setIsCreating(false); }} isConnecting={false} />
               </div>
             </motion.div>
           ) : (

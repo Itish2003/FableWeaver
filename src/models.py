@@ -21,6 +21,10 @@ class Story(Base):
     branch_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # Name of this branch (e.g., "What if I chose option B?")
     branch_point_chapter: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Chapter number where this branched
 
+    # Per-story chapter length overrides (from setup wizard)
+    chapter_min_words_override: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    chapter_max_words_override: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
     # Relationships
     history_items: Mapped[List["History"]] = relationship("History", back_populates="story", cascade="all, delete-orphan", order_by="History.sequence")
     world_bible: Mapped["WorldBible"] = relationship("WorldBible", back_populates="story", uselist=False, cascade="all, delete-orphan")
