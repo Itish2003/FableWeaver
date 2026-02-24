@@ -28,8 +28,9 @@ class Settings(BaseSettings):
     # Default 8192 is too low for 6000-8000 word chapters + JSON metadata.
     storyteller_max_output_tokens: int = 16384
 
-    # Pipeline timeout in seconds (default 5 minutes)
-    pipeline_timeout_seconds: int = 300
+    # Pipeline timeout in seconds (increased to 15 minutes for full research + generation)
+    # Research phase: 1-3 mins (15 agents), Lore Keeper: 2-5 mins, Storyteller: 1-5 mins
+    pipeline_timeout_seconds: int = 900
 
     # Heartbeat interval during generation (seconds)
     heartbeat_interval_seconds: int = 15
