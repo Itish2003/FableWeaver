@@ -44,7 +44,7 @@ export default function PowerOriginsSection({ data, onSave }) {
                   </div>
                   <div className="flex items-center gap-2">
                     {(power?.oc_current_mastery || power?.mastery_level) && (
-                      <span className={`text-xs px-2 py-0.5 rounded ${
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
                         (power.oc_current_mastery || power.mastery_level)?.toLowerCase().includes('master') ? 'bg-purple-500/30 text-purple-300' :
                         (power.oc_current_mastery || power.mastery_level)?.toLowerCase().includes('advanced') ? 'bg-blue-500/30 text-blue-300' :
                         (power.oc_current_mastery || power.mastery_level)?.toLowerCase().includes('intermediate') ? 'bg-green-500/30 text-green-300' :
@@ -92,7 +92,7 @@ export default function PowerOriginsSection({ data, onSave }) {
                           <label className="text-xs text-gray-500 block mb-1">Signature Moves ({power.signature_moves.length})</label>
                           <div className="flex flex-wrap gap-1">
                             {power.signature_moves.map((move, i) => (
-                              <span key={i} className="text-xs bg-amber-500/20 text-amber-300 px-2 py-1 rounded">
+                              <span key={i} className="text-xs bg-amber-500/20 text-amber-300 px-2 py-1 rounded-full">
                                 {move}
                               </span>
                             ))}
@@ -109,7 +109,7 @@ export default function PowerOriginsSection({ data, onSave }) {
                                 <div className="flex items-start justify-between mb-2">
                                   <span className="text-sm text-white font-medium">{example.scene}</span>
                                   {example.source && (
-                                    <span className="text-xs text-gray-500 bg-black/30 px-2 py-0.5 rounded">{example.source}</span>
+                                    <span className="text-xs text-gray-500 bg-black/30 px-2 py-0.5 rounded-full">{example.source}</span>
                                   )}
                                 </div>
                                 {example.opponent_or_context && (
@@ -141,7 +141,7 @@ export default function PowerOriginsSection({ data, onSave }) {
                           <label className="text-xs text-gray-500 block mb-1">Canon Techniques ({power.canon_techniques.length})</label>
                           <div className="space-y-2 max-h-60 overflow-y-auto">
                             {power.canon_techniques.map((tech, i) => (
-                              <div key={i} className="bg-purple-500/10 rounded p-2">
+                              <div key={i} className="bg-purple-500/10 rounded-lg p-2">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm text-purple-300 font-medium">
                                     {typeof tech === 'string' ? tech : tech.name}
@@ -192,12 +192,12 @@ export default function PowerOriginsSection({ data, onSave }) {
                           <label className="text-xs text-gray-500 block mb-1">Technique Combinations</label>
                           <div className="space-y-2">
                             {power.technique_combinations.map((combo, i) => (
-                              <div key={i} className="bg-cyan-500/10 rounded p-2">
+                              <div key={i} className="bg-cyan-500/10 rounded-lg p-2">
                                 <span className="text-sm text-cyan-300 font-medium">{combo.name}</span>
                                 {combo.components && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {combo.components.map((c, j) => (
-                                      <span key={j} className="text-xs bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded">
+                                      <span key={j} className="text-xs bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full">
                                         {c}
                                       </span>
                                     ))}
@@ -217,7 +217,7 @@ export default function PowerOriginsSection({ data, onSave }) {
                           <label className="text-xs text-gray-500 block mb-1">Unexplored Potential</label>
                           <div className="space-y-2">
                             {power.unexplored_potential.map((potential, i) => (
-                              <div key={i} className="bg-yellow-500/10 rounded p-2">
+                              <div key={i} className="bg-yellow-500/10 rounded-lg p-2">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm text-yellow-300 font-medium">{potential.name}</span>
                                   {potential.source && (
@@ -289,7 +289,7 @@ export default function PowerOriginsSection({ data, onSave }) {
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-white font-medium">{evolution.name || evolution.evolution}</span>
                   {evolution.unlocked !== undefined && (
-                    <span className={`text-xs px-2 py-0.5 rounded ${
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
                       evolution.unlocked
                         ? 'bg-green-500/30 text-green-300'
                         : 'bg-gray-500/30 text-gray-400'
@@ -324,7 +324,7 @@ export default function PowerOriginsSection({ data, onSave }) {
                 </span>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-xs text-gray-500">Ch.{usage.last_chapter}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                     usage.strain_level === 'high' ? 'bg-red-500/30 text-red-300' :
                     usage.strain_level === 'medium' ? 'bg-yellow-500/30 text-yellow-300' :
                     'bg-green-500/30 text-green-300'

@@ -1622,13 +1622,13 @@ export default function StoryView({ engine }) {
                               />
                               <button
                                 onClick={() => saveBibleEdit('character_sheet.name', editValue)}
-                                className="px-2 py-1 bg-accent text-black rounded text-xs"
+                                className="btn-primary-sm"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingField(null)}
-                                className="px-2 py-1 bg-white/10 rounded text-xs"
+                                className="btn-secondary-sm"
                               >
                                 Cancel
                               </button>
@@ -1657,13 +1657,13 @@ export default function StoryView({ engine }) {
                               />
                               <button
                                 onClick={() => saveBibleEdit('character_sheet.cape_name', editValue)}
-                                className="px-2 py-1 bg-accent text-black rounded text-xs"
+                                className="btn-primary-sm"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingField(null)}
-                                className="px-2 py-1 bg-white/10 rounded text-xs"
+                                className="btn-secondary-sm"
                               >
                                 Cancel
                               </button>
@@ -1692,13 +1692,13 @@ export default function StoryView({ engine }) {
                               />
                               <button
                                 onClick={() => saveBibleEdit('character_sheet.archetype', editValue)}
-                                className="px-2 py-1 bg-accent text-black rounded text-xs"
+                                className="btn-primary-sm"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingField(null)}
-                                className="px-2 py-1 bg-white/10 rounded text-xs"
+                                className="btn-secondary-sm"
                               >
                                 Cancel
                               </button>
@@ -1732,13 +1732,13 @@ export default function StoryView({ engine }) {
                               />
                               <button
                                 onClick={() => saveBibleEdit('meta.genre', editValue)}
-                                className="px-2 py-1 bg-accent text-black rounded text-xs"
+                                className="btn-primary-sm"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingField(null)}
-                                className="px-2 py-1 bg-white/10 rounded text-xs"
+                                className="btn-secondary-sm"
                               >
                                 Cancel
                               </button>
@@ -1767,13 +1767,13 @@ export default function StoryView({ engine }) {
                               />
                               <button
                                 onClick={() => saveBibleEdit('meta.theme', editValue)}
-                                className="px-2 py-1 bg-accent text-black rounded text-xs"
+                                className="btn-primary-sm"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingField(null)}
-                                className="px-2 py-1 bg-white/10 rounded text-xs"
+                                className="btn-secondary-sm"
                               >
                                 Cancel
                               </button>
@@ -1803,13 +1803,13 @@ export default function StoryView({ engine }) {
                               />
                               <button
                                 onClick={() => saveBibleEdit('meta.current_story_date', editValue)}
-                                className="px-2 py-1 bg-accent text-black rounded text-xs"
+                                className="btn-primary-sm"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingField(null)}
-                                className="px-2 py-1 bg-white/10 rounded text-xs"
+                                className="btn-secondary-sm"
                               >
                                 Cancel
                               </button>
@@ -1832,7 +1832,7 @@ export default function StoryView({ engine }) {
                           onClick={() => {
                             if (refreshBible) refreshBible();
                           }}
-                          className="w-full py-2 bg-white/10 hover:bg-white/20 rounded text-sm text-gray-300 transition-colors"
+                          className="w-full btn-secondary"
                         >
                           🔄 Refresh Bible
                         </button>
@@ -1938,14 +1938,14 @@ export default function StoryView({ engine }) {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowBranchModal(false)}
-                  className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 transition-colors"
+                  className="flex-1 btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateBranch}
                   disabled={!newBranchName.trim()}
-                  className="flex-1 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 btn-primary"
                 >
                   Create Branch
                 </button>

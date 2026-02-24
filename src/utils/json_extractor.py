@@ -6,13 +6,22 @@ with delimiter-aware parsing and balanced-brace scanning.
 """
 import json
 import logging
-from typing import Optional
+from typing import Optional, NamedTuple
 
 from pydantic import ValidationError
 
 from src.schemas import ChapterMetadata
 
 logger = logging.getLogger(__name__)
+
+
+class ChapterValidation(NamedTuple):
+    """Result of chapter word count validation."""
+    word_count: int
+    meets_minimum: bool
+    min_words: int
+    max_words: int
+    message: str
 
 
 def extract_chapter_json(text: str) -> Optional[dict]:
@@ -166,3 +175,74 @@ def _find_matching_brace(text: str, start: int) -> Optional[int]:
                 return i
 
     return None
+
+
+def validate_chapter_length(text: str, min_words: int, max_words: int) -> ChapterValidation:
+    """
+    Validate chapter word count (excluding JSON metadata).
+
+    Args:
+        text: Full chapter output including narrative and JSON metadata
+        min_words: Minimum acceptable word count
+        max_words: Maximum acceptable word count (warning only if exceeded)
+
+    Returns:
+        ChapterValidation with word count and validation result
+    """
+    # Extract narrative (everything before the JSON block)
+    narrative = _extract_narrative_text(text)
+
+    # Count words (simple split on whitespace)
+    word_count = len(narrative.split()) if narrative else 0
+    meets_minimum = word_count >= min_words
+
+    if meets_minimum:
+        message = f"✓ Chapter {word_count} words ({min_words}-{max_words} target)"
+    else:
+        shortfall = min_words - word_count
+        message = f"⚠ Chapter {word_count} words (minimum {min_words} — short by {shortfall} words). Consider regenerating for richer narrative."
+
+    if word_count > max_words:
+        message += f" [note: {word_count - max_words} words over target]"
+
+    return ChapterValidation(
+        word_count=word_count,
+        meets_minimum=meets_minimum,
+        min_words=min_words,
+        max_words=max_words,
+        message=message
+    )
+
+
+def _extract_narrative_text(text: str) -> str:
+    """Extract narrative portion (before JSON metadata block)."""
+    # Priority 1: Find ```json code block marker
+    json_start = text.rfind("```json")
+
+    if json_start > -1:
+        # Extract everything before the code block
+        narrative = text[:json_start].strip()
+    else:
+        # Priority 2: Find raw JSON object (last { ... })
+        # Scan from end to find the last opening brace
+        json_start = text.rfind("{")
+        if json_start > -1:
+            # Verify this is likely a JSON block (has "summary" or "choices" nearby)
+            tail = text[json_start:json_start+200]
+            if '"summary"' in tail or '"choices"' in tail:
+                narrative = text[:json_start].strip()
+            else:
+                # Looks like a stray { in the narrative, not JSON block
+                narrative = text.strip()
+        else:
+            # No JSON block found at all, use entire text
+            narrative = text.strip()
+
+    # Remove markdown chapter headers for cleaner word count
+    # (they're structural, not narrative content)
+    lines = narrative.split('\n')
+    narrative_lines = [
+        line for line in lines
+        if not line.strip().startswith('#')  # Remove headers
+    ]
+    return '\n'.join(narrative_lines)

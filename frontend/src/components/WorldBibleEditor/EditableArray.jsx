@@ -77,7 +77,7 @@ export default function EditableArray({
               setEditingIndex(null);
             }
           }}
-          className="flex-1 bg-black/60 border border-purple-500/50 rounded px-2 py-1 text-sm text-white focus:outline-none"
+          className="input-field text-sm py-1 px-2"
           autoFocus
         />
       );
@@ -107,7 +107,7 @@ export default function EditableArray({
                 <select
                   value={item[key] || ''}
                   onChange={(e) => handleUpdateItem(index, { ...item, [key]: e.target.value })}
-                  className="flex-1 bg-black/60 border border-purple-500/50 rounded px-2 py-1 text-sm text-white"
+                  className="input-field text-sm py-1 px-2"
                 >
                   {config.options?.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -118,7 +118,7 @@ export default function EditableArray({
                   type={config.type || 'text'}
                   value={item[key] || ''}
                   onChange={(e) => handleUpdateItem(index, { ...item, [key]: e.target.value })}
-                  className="flex-1 bg-black/60 border border-purple-500/50 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                  className="input-field text-sm py-1 px-2"
                   placeholder={config.placeholder}
                 />
               )}
@@ -132,7 +132,7 @@ export default function EditableArray({
     return (
       <div
         onClick={() => { setEditingIndex(index); setIsEditing(true); }}
-        className="flex-1 cursor-pointer hover:bg-white/5 rounded p-1 -m-1"
+        className="flex-1 cursor-pointer hover:bg-white/5 rounded-lg p-1 -m-1"
       >
         {itemSchema ? (
           <div className="space-y-0.5">
@@ -199,7 +199,7 @@ export default function EditableArray({
         <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">
           <button
             onClick={handleAddItem}
-            className="flex-1 px-3 py-2 text-xs rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors"
+            className="flex-1 btn-primary-sm"
           >
             + Add Item
           </button>
@@ -207,13 +207,13 @@ export default function EditableArray({
             <>
               <button
                 onClick={handleCancel}
-                className="px-3 py-2 text-xs rounded-lg bg-white/10 text-gray-400 hover:bg-white/20 transition-colors"
+                className="btn-secondary-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="px-3 py-2 text-xs rounded-lg bg-green-500/20 text-green-300 hover:bg-green-500/30 transition-colors"
+                className="btn-primary-sm"
               >
                 Save All
               </button>

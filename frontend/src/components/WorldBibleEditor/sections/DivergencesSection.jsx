@@ -69,10 +69,10 @@ export default function DivergencesSection({ data, onSave }) {
                     <p className="text-sm text-gray-300 line-clamp-1">{div.what_changed}</p>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <span className={`text-xs px-2 py-0.5 rounded border ${SEVERITY_COLORS[div.severity] || SEVERITY_COLORS.minor}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${SEVERITY_COLORS[div.severity] || SEVERITY_COLORS.minor}`}>
                       {div.severity}
                     </span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[div.status] || STATUS_COLORS.active}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[div.status] || STATUS_COLORS.active}`}>
                       {div.status}
                     </span>
                     <svg
@@ -128,7 +128,7 @@ export default function DivergencesSection({ data, onSave }) {
                             <label className="text-xs text-gray-500 block mb-1">Affected Canon Events</label>
                             <div className="flex flex-wrap gap-1">
                               {div.affected_canon_events.map((event, i) => (
-                                <span key={i} className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded">
+                                <span key={i} className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">
                                   {event}
                                 </span>
                               ))}
@@ -161,7 +161,7 @@ export default function DivergencesSection({ data, onSave }) {
                   )}
                 </div>
                 {effect.materialized !== undefined && (
-                  <span className={`text-xs px-2 py-0.5 rounded ${
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
                     effect.materialized ? 'bg-green-500/30 text-green-300' : 'bg-gray-500/30 text-gray-400'
                   }`}>
                     {effect.materialized ? 'Materialized' : 'Pending'}

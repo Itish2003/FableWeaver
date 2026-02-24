@@ -38,7 +38,7 @@ export default function VoicesSection({ data, onSave }) {
                 </div>
                 <div className="flex items-center gap-2">
                   {voice?.speech_patterns && (
-                    <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
+                    <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
                       {Array.isArray(voice.speech_patterns) ? `${voice.speech_patterns.length} patterns` : '1 pattern'}
                     </span>
                   )}
@@ -75,12 +75,12 @@ export default function VoicesSection({ data, onSave }) {
                           {voice?.speech_patterns ? (
                             Array.isArray(voice.speech_patterns) ? (
                               voice.speech_patterns.map((pattern, idx) => (
-                                <div key={idx} className="text-sm text-gray-300 bg-black/20 rounded px-3 py-2">
+                                <div key={idx} className="text-sm text-gray-300 bg-black/20 rounded-lg px-3 py-2">
                                   {pattern}
                                 </div>
                               ))
                             ) : (
-                              <div className="text-sm text-gray-300 bg-black/20 rounded px-3 py-2">
+                              <div className="text-sm text-gray-300 bg-black/20 rounded-lg px-3 py-2">
                                 {voice.speech_patterns}
                               </div>
                             )
@@ -94,7 +94,7 @@ export default function VoicesSection({ data, onSave }) {
                       {voice?.verbal_tics && (
                         <div>
                           <label className="text-xs text-gray-500 block mb-2">Verbal Tics</label>
-                          <div className="text-sm text-gray-300 bg-black/20 rounded px-3 py-2">
+                          <div className="text-sm text-gray-300 bg-black/20 rounded-lg px-3 py-2">
                             {Array.isArray(voice.verbal_tics)
                               ? voice.verbal_tics.join(', ')
                               : voice.verbal_tics
@@ -120,7 +120,7 @@ export default function VoicesSection({ data, onSave }) {
                           <label className="text-xs text-gray-500 block mb-2">Topics They Discuss</label>
                           <div className="flex flex-wrap gap-1">
                             {voice.topics_they_discuss.map((topic, idx) => (
-                              <span key={idx} className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">
+                              <span key={idx} className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded-full">
                                 {topic}
                               </span>
                             ))}
@@ -134,7 +134,7 @@ export default function VoicesSection({ data, onSave }) {
                           <label className="text-xs text-gray-500 block mb-2">Topics They Avoid</label>
                           <div className="flex flex-wrap gap-1">
                             {voice.topics_they_avoid.map((topic, idx) => (
-                              <span key={idx} className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">
+                              <span key={idx} className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded-full">
                                 {topic}
                               </span>
                             ))}

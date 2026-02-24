@@ -177,12 +177,32 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                 ws_disconnected = True
 
     # Extract structured JSON metadata from chapter output
-    from src.utils.json_extractor import extract_chapter_json
+    from src.utils.json_extractor import extract_chapter_json, validate_chapter_length
 
     parsed = extract_chapter_json(buffer)
     choices_json = parsed.get("choices") if parsed else None
     summary_text = parsed.get("summary") if parsed else None
     questions_json = parsed.get("questions") if parsed else None
+
+    # Validate chapter word count (non-blocking warning)
+    validation = validate_chapter_length(buffer, settings.chapter_min_words, settings.chapter_max_words)
+    logger.log("chapter_length", validation.message, {
+        "word_count": validation.word_count,
+        "meets_minimum": validation.meets_minimum,
+        "story_id": ctx.story_id,
+    })
+
+    if not validation.meets_minimum and not ws_disconnected:
+        try:
+            await manager.send_json({
+                "type": "content_delta",
+                "text": f"\n\n⚠️ **Chapter Length Note**: This chapter is {validation.word_count} words "
+                        f"({settings.chapter_min_words}-{settings.chapter_max_words} target). "
+                        f"You can regenerate for a fuller narrative using the Regenerate button.\n",
+                "sender": "system"
+            }, ctx.websocket)
+        except WebSocketDisconnect:
+            ws_disconnected = True
 
     # --- Truncation detection ---
     if buffer and len(buffer.strip()) > 2000 and parsed is None:

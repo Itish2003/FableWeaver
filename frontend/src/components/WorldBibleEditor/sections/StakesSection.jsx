@@ -36,7 +36,7 @@ export default function StakesSection({ data, onSave }) {
           <div key={power} className="flex items-center justify-between bg-black/20 rounded-lg p-3">
             <span className="text-sm text-purple-300 font-medium">{power}</span>
             <div className="flex items-center gap-4">
-              <span className={`text-xs px-2 py-1 rounded ${
+              <span className={`text-xs px-2 py-1 rounded-full ${
                 info.strain_level === 'critical' ? 'bg-red-500/30 text-red-300' :
                 info.strain_level === 'high' ? 'bg-orange-500/30 text-orange-300' :
                 info.strain_level === 'medium' ? 'bg-yellow-500/30 text-yellow-300' :

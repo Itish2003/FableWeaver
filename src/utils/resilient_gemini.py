@@ -46,8 +46,8 @@ class ResilientGemini(Gemini):
 
     def __init__(self, model, api_key=None, **kwargs):
         """Initialize with optional per-agent API key binding."""
-        self._api_key = api_key
         super().__init__(model=model, **kwargs)
+        self._api_key = api_key
 
     @cached_property
     def api_client(self) -> Client:

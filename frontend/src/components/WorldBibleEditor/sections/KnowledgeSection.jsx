@@ -94,7 +94,7 @@ export default function KnowledgeSection({ data, onSave }) {
                           <label className="text-xs text-gray-500">Hidden From</label>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {secret.absolutely_hidden_from.map((char, i) => (
-                              <span key={i} className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded">
+                              <span key={i} className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">
                                 {char}
                               </span>
                             ))}

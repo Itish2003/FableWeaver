@@ -142,7 +142,7 @@ export default function CharacterSheetSection({ data, onSave }) {
                 <span className="text-sm text-white font-medium">{name}</span>
                 <div className="flex items-center gap-2">
                   {typeof rel === 'object' && rel?.trust && (
-                    <span className={`text-xs px-2 py-0.5 rounded ${
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
                       rel.trust === 'high' ? 'bg-green-500/30 text-green-300' :
                       rel.trust === 'low' ? 'bg-red-500/30 text-red-300' :
                       'bg-yellow-500/30 text-yellow-300'
@@ -232,7 +232,7 @@ export default function CharacterSheetSection({ data, onSave }) {
               >
                 <span className="text-sm text-white font-medium">{name}</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded ${
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
                     identity?.is_public ? 'bg-green-500/30 text-green-300' : 'bg-gray-500/30 text-gray-300'
                   }`}>
                     {identity?.is_public ? 'Public' : 'Secret'}

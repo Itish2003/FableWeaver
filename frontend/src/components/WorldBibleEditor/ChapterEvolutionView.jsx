@@ -95,7 +95,7 @@ export default function ChapterEvolutionView({ history }) {
                   {Object.keys(chapter.changes.stakes_tracking.power_debt_incurred || {}).length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {Object.entries(chapter.changes.stakes_tracking.power_debt_incurred).map(([power, level]) => (
-                        <span key={power} className="text-xs bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded">
+                        <span key={power} className="text-xs bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-full">
                           {power}: {typeof level === 'string' ? level : level.strain_level || 'used'}
                         </span>
                       ))}
@@ -117,7 +117,7 @@ export default function ChapterEvolutionView({ history }) {
                       <span className="text-xs text-green-400">Canon Events:</span>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {chapter.changes.canon_events_addressed.map((event, i) => (
-                          <span key={i} className="text-xs bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded">
+                          <span key={i} className="text-xs bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded-full">
                             {event}
                           </span>
                         ))}
@@ -145,7 +145,7 @@ export default function ChapterEvolutionView({ history }) {
               {chapter.changes.character_voices_used?.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {chapter.changes.character_voices_used.map((voice, i) => (
-                    <span key={i} className="text-xs bg-white/10 text-gray-400 px-1.5 py-0.5 rounded">
+                    <span key={i} className="text-xs bg-white/10 text-gray-400 px-1.5 py-0.5 rounded-full">
                       {voice}
                     </span>
                   ))}

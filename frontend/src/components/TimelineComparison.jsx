@@ -5,12 +5,12 @@ const API_BASE = 'http://localhost:8000';
 
 // Status icons and colors
 const STATUS_CONFIG = {
-  matched: { icon: '✓', color: '#22c55e', bg: '#14532d', label: 'Matched' },
-  modified: { icon: '~', color: '#eab308', bg: '#422006', label: 'Modified' },
-  prevented: { icon: '✗', color: '#ef4444', bg: '#450a0a', label: 'Prevented' },
-  upcoming: { icon: '→', color: '#a78bfa', bg: '#2e1065', label: 'Upcoming' },
-  unaddressed: { icon: '?', color: '#9ca3af', bg: '#1f2937', label: 'Unaddressed' },
-  story_only: { icon: '★', color: '#06b6d4', bg: '#083344', label: 'Story Only' },
+  matched:     { icon: '✓', color: '#22c55e', bg: '#14532d', label: 'Matched',     cardClass: 'border-green-500/25 bg-green-950/40',   iconClass: 'text-green-400' },
+  modified:    { icon: '~', color: '#eab308', bg: '#422006', label: 'Modified',    cardClass: 'border-yellow-500/25 bg-amber-950/40',  iconClass: 'text-yellow-400' },
+  prevented:   { icon: '✗', color: '#ef4444', bg: '#450a0a', label: 'Prevented',   cardClass: 'border-red-500/25 bg-red-950/40',       iconClass: 'text-red-400' },
+  upcoming:    { icon: '→', color: '#a78bfa', bg: '#2e1065', label: 'Upcoming',    cardClass: 'border-violet-400/25 bg-violet-950/40', iconClass: 'text-violet-400' },
+  unaddressed: { icon: '?', color: '#9ca3af', bg: '#1f2937', label: 'Unaddressed', cardClass: 'border-gray-400/25 bg-gray-800/40',     iconClass: 'text-gray-400' },
+  story_only:  { icon: '★', color: '#06b6d4', bg: '#083344', label: 'Story Only',  cardClass: 'border-cyan-500/25 bg-cyan-950/40',     iconClass: 'text-cyan-400' },
 };
 
 function EventCard({ event, status, showStoryMatch = false }) {
@@ -19,23 +19,18 @@ function EventCard({ event, status, showStoryMatch = false }) {
 
   return (
     <div
-      className="p-3 rounded-lg border mb-2 transition-all hover:scale-[1.01]"
-      style={{
-        borderColor: config.color + '40',
-        backgroundColor: config.bg + '60',
-      }}
+      className={`p-3 rounded-lg border mb-2 transition-all hover:scale-[1.01] ${config.cardClass}`}
     >
       <div className="flex items-start gap-2">
         <span
-          className="text-lg font-bold flex-shrink-0 w-6 text-center"
-          style={{ color: config.color }}
+          className={`text-lg font-bold flex-shrink-0 w-6 text-center ${config.iconClass}`}
         >
           {config.icon}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-400 font-mono">[{event.date}]</span>
-            {isMajor && <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 font-bold">MAJOR</span>}
+            {isMajor && <span className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-900/50 text-yellow-400 font-bold">MAJOR</span>}
           </div>
           <p className={`text-sm mt-1 ${isMajor ? 'font-semibold text-white' : 'text-gray-300'}`}>
             {event.event}
@@ -43,7 +38,7 @@ function EventCard({ event, status, showStoryMatch = false }) {
           {event.characters && event.characters.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {event.characters.slice(0, 5).map((char, i) => (
-                <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">
+                <span key={i} className="text-xs px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-400">
                   {char}
                 </span>
               ))}
@@ -70,11 +65,11 @@ function EventCard({ event, status, showStoryMatch = false }) {
 function StatsBar({ stats }) {
   const total = stats.total_canon || 1;
   const bars = [
-    { key: 'matched', value: stats.matched, color: '#22c55e' },
-    { key: 'modified', value: stats.modified, color: '#eab308' },
-    { key: 'prevented', value: stats.prevented, color: '#ef4444' },
-    { key: 'upcoming', value: stats.upcoming, color: '#a78bfa' },
-    { key: 'unaddressed', value: stats.unaddressed, color: '#9ca3af' },
+    { key: 'matched',     value: stats.matched,     bgClass: 'bg-green-500',  dotClass: 'bg-green-500' },
+    { key: 'modified',    value: stats.modified,    bgClass: 'bg-yellow-500', dotClass: 'bg-yellow-500' },
+    { key: 'prevented',   value: stats.prevented,   bgClass: 'bg-red-500',    dotClass: 'bg-red-500' },
+    { key: 'upcoming',    value: stats.upcoming,    bgClass: 'bg-violet-400', dotClass: 'bg-violet-400' },
+    { key: 'unaddressed', value: stats.unaddressed, bgClass: 'bg-gray-400',   dotClass: 'bg-gray-400' },
   ];
 
   return (
@@ -104,8 +99,7 @@ function StatsBar({ stats }) {
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              style={{ backgroundColor: bar.color }}
-              className="h-full"
+              className={`h-full ${bar.bgClass}`}
               title={`${STATUS_CONFIG[bar.key].label}: ${bar.value}`}
             />
           );
@@ -114,20 +108,14 @@ function StatsBar({ stats }) {
       <div className="flex flex-wrap gap-4 mt-2 text-xs">
         {bars.map(bar => (
           <div key={bar.key} className="flex items-center gap-1">
-            <span
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: bar.color }}
-            />
+            <span className={`w-2.5 h-2.5 rounded-full ${bar.dotClass}`} />
             <span className="text-gray-400">{STATUS_CONFIG[bar.key].label}:</span>
             <span className="font-mono text-white">{bar.value}</span>
           </div>
         ))}
         {stats.story_only > 0 && (
           <div className="flex items-center gap-1">
-            <span
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: '#06b6d4' }}
-            />
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
             <span className="text-gray-400">Story Only:</span>
             <span className="font-mono text-white">{stats.story_only}</span>
           </div>

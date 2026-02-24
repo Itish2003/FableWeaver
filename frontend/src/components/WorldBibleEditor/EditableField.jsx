@@ -91,7 +91,7 @@ export default function EditableField({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-black/60 border border-purple-500/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+            className="input-field text-sm"
           >
             {options.map((opt) => (
               <option key={opt.value ?? opt} value={opt.value ?? opt}>
@@ -105,7 +105,7 @@ export default function EditableField({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-black/60 border border-purple-500/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 min-h-[100px] resize-y"
+            className="input-field text-sm min-h-[100px] resize-y"
             placeholder={placeholder}
           />
         ) : (
@@ -115,20 +115,20 @@ export default function EditableField({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-black/60 border border-purple-500/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+            className="input-field text-sm"
             placeholder={placeholder}
           />
         )}
         <div className="flex gap-2 justify-end">
           <button
             onClick={handleCancel}
-            className="px-3 py-1.5 text-xs rounded-lg bg-white/10 text-gray-400 hover:bg-white/20 transition-colors"
+            className="btn-secondary-sm"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-3 py-1.5 text-xs rounded-lg bg-purple-500/30 text-purple-300 hover:bg-purple-500/50 transition-colors"
+            className="btn-primary-sm"
           >
             Save
           </button>
