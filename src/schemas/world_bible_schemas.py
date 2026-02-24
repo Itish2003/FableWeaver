@@ -15,7 +15,7 @@ Usage:
     cost_dict = cost.model_dump()
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 
 class CostPaid(BaseModel):
@@ -93,9 +93,9 @@ class Divergence(BaseModel):
         default="OC intervention",
         description="What caused this divergence"
     )
-    ripple_effects: List[str] = Field(
+    ripple_effects: List[Union[str, Dict[str, Any]]] = Field(
         default_factory=list,
-        description="Predicted downstream effects"
+        description="Predicted downstream effects (strings or effect objects)"
     )
     affected_canon_events: List[str] = Field(
         default_factory=list,

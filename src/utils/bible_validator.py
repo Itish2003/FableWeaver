@@ -533,3 +533,137 @@ def validate_bible_integrity(bible: dict) -> List[str]:
             issues.append(f"chapter_dates[{i}] missing 'date' field")
 
     return issues
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SCHEMA ENFORCEMENT (Issue #11)
+# ─────────────────────────────────────────────────────────────────────────────
+
+from typing import Literal, Tuple
+
+ValidationMode = Literal["warn", "error", "strict"]
+
+
+def _get_section_schema_class(section: str):
+    """
+    Maps a top-level Bible key to its Pydantic schema class.
+    Returns None if the section has no schema (passthrough).
+    """
+    try:
+        from src.schemas.world_bible_complete_schema import (
+            WorldMeta, CharacterSheet, PowerOriginsSection, WorldState,
+            CharacterVoiceProfile, KnowledgeBoundaries, StakesTracking,
+            CanonCharacterIntegrity, CanonTimeline, StoryTimeline,
+            DivergencesSection, UpcomingCanonEvents,
+        )
+    except ImportError:
+        return None
+
+    registry = {
+        "meta": WorldMeta,
+        "character_sheet": CharacterSheet,
+        "power_origins": PowerOriginsSection,
+        "world_state": WorldState,
+        "knowledge_boundaries": KnowledgeBoundaries,
+        "stakes_tracking": StakesTracking,
+        "stakes_and_consequences": StakesTracking,  # legacy alias
+        "canon_character_integrity": CanonCharacterIntegrity,
+        "canon_timeline": CanonTimeline,
+        "story_timeline": StoryTimeline,
+        "divergences": DivergencesSection,
+        "upcoming_canon_events": UpcomingCanonEvents,
+    }
+    return registry.get(section)
+
+
+def validate_bible_section(
+    path: str,
+    value: Any,
+    mode: ValidationMode = "warn",
+) -> Any:
+    """
+    Validate a Bible section against its Pydantic schema.
+
+    Called AFTER validate_and_fix_bible_entry() in update_bible().
+
+    Args:
+        path: Dot-notation path being updated (e.g., "stakes_tracking")
+        value: The value after legacy fixing
+        mode: "warn" = log warning, return value as-is on failure
+               "error" = log error, return value as-is on failure
+               "strict" = raise ValidationError on failure
+
+    Returns:
+        value: Potentially coerced if schema parsing succeeded.
+               Original value if parsing failed and mode != "strict".
+    """
+    from pydantic import ValidationError
+
+    if value is None:
+        return value
+
+    section = path.split(".")[0]
+    schema_class = _get_section_schema_class(section)
+
+    if schema_class is None:
+        return value  # No schema for this section
+
+    # Only validate full section updates, not sub-key updates like "character_sheet.name"
+    if "." in path and path.split(".")[0] != path:
+        return value  # Sub-key update; section-level validation not applicable
+
+    if not isinstance(value, dict):
+        return value  # Lists and primitives bypass section validation
+
+    try:
+        parsed = schema_class.model_validate(value)
+        # Return coerced dict (stats synced, legacy keys merged, etc.)
+        return parsed.model_dump(exclude_none=False, by_alias=False)
+    except ValidationError as exc:
+        log_fn = logger.error if mode == "error" else logger.warning
+        log_fn(
+            "Bible section '%s' failed schema validation: %d error(s)",
+            section,
+            exc.error_count(),
+        )
+        if mode == "strict":
+            raise
+        return value  # Non-blocking fallback
+
+
+def validate_full_bible_schema(
+    content: dict,
+    mode: ValidationMode = "warn",
+) -> Tuple[bool, List[str]]:
+    """
+    Validate the entire Bible content against WorldBibleSchema.
+
+    Used in verify_bible_integrity() after chapter generation.
+
+    Returns:
+        (is_valid, list_of_issue_strings)
+    """
+    from pydantic import ValidationError
+
+    try:
+        from src.schemas.world_bible_complete_schema import WorldBibleSchema
+    except ImportError:
+        return True, []  # Schema not available yet
+
+    issues = []
+    try:
+        WorldBibleSchema.model_validate(content)
+        return True, []
+    except ValidationError as exc:
+        for error in exc.errors():
+            loc = " -> ".join(str(l) for l in error["loc"])
+            issues.append(f"[{loc}] {error['msg']}")
+
+        log_fn = logger.error if mode == "error" else logger.warning
+        log_fn(
+            "Full Bible schema validation found %d structural issues",
+            len(issues),
+        )
+        if mode == "strict":
+            raise
+        return False, issues
