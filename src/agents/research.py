@@ -792,7 +792,7 @@ When OC has powers from a specific canon character, structure as:
   "original_wielder": "Canon character who had this power",
   "source_universe": "Where this power comes from",
   "canon_techniques": [
-    {{"name": "Technique name", "description": "How it works", "limitations": "Costs/cooldowns", "source": "[citation]"}}
+    {{"name": "Technique name", "description": "How it works", "limitations": ["Cost constraint", "Cooldown or recharge time"], "cost": "Resource/energy cost", "source": "[citation]"}}
   ],
   "canon_scene_examples": [
     {{
@@ -975,7 +975,7 @@ Before EACH `update_bible` call, verify:
 From the timeline deviation / user input, extract and populate:
 - `character_sheet.name` → The OC's name (e.g., "Lucian", "Lucian Dallon")
 - `character_sheet.archetype` → A brief archetype description (e.g., "Morally Conflicted Protector", "Reluctant Hero", "Power Fantasy Protagonist")
-- `character_sheet.status` → Initial status object (e.g., {{"health": "healthy", "mental": "conflicted"}})
+- `character_sheet.status` → Initial status object (e.g., {{"health": "healthy", "mental_state": "conflicted", "power_level": "exceptional"}})
 - `character_sheet.powers` → Summary of OC's powers
 - `meta.universes` → List of universes involved (e.g., ["Wormverse", "Jujutsu Kaisen"])
 - `meta.genre` → Infer genre from context (e.g., "Superhero Drama", "Action/Adventure")
