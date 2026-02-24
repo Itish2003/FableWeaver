@@ -201,20 +201,20 @@ export default function SetupWizard({ onInit, isConnecting }) {
 
 function InitialInputForm({ onSubmit, value, onChange, loading }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8 max-w-3xl mx-auto">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8 max-w-2xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-white mb-2">Welcome to FableWeaver</h2>
-        <p className="text-gray-300">Let's set up your story through a quick conversation.</p>
+        <h2 className="text-4xl font-bold text-white mb-3">Create Your Story</h2>
+        <p className="text-gray-400">Tell me about your fanfiction idea. I'll ask clarifying questions to get it just right.</p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-400 mb-3">
-            Describe your story idea (rough outline is fine!)
+          <label className="block text-sm font-semibold text-gray-300 mb-3">
+            Your Story Idea
           </label>
           <textarea
-            className="input-field min-h-[150px]"
-            placeholder="E.g., 'Wormverse story with OC who has Gojo's Six Eyes and Infinity powers from Jujutsu Kaisen. Want strict canon adherence...'"
+            className="input-field min-h-[140px] resize-none"
+            placeholder="E.g., 'Crossover story where Kudou gets powers from another universe. I want strict canon accuracy...'"
             value={value}
             onChange={e => onChange(e.target.value)}
             disabled={loading}
@@ -224,16 +224,16 @@ function InitialInputForm({ onSubmit, value, onChange, loading }) {
         <motion.button
           type="submit"
           disabled={loading || !value.trim()}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           className="btn-primary w-full"
         >
-          {loading ? 'Analyzing...' : 'Next: Tell me about your story'}
+          {loading ? 'Analyzing...' : 'Start Setup Conversation'}
         </motion.button>
       </form>
 
       <p className="text-xs text-gray-500 mt-6 text-center">
-        I'll ask a few clarifying questions to make sure we're on the same page.
+        I'll ask 5 clarifying questions to understand your story better
       </p>
     </motion.div>
   );
@@ -241,21 +241,27 @@ function InitialInputForm({ onSubmit, value, onChange, loading }) {
 
 function ClarificationDialog({ conversation, currentQuestion, userAnswer, onAnswerChange, onSubmit, loading }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel p-8 max-w-3xl mx-auto max-h-[80vh] flex flex-col">
-      <h2 className="text-2xl font-bold text-white mb-6">Let's clarify a few things...</h2>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel p-8 max-w-2xl mx-auto max-h-[85vh] flex flex-col">
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">Let's set this up</h2>
+        <p className="text-gray-400 text-sm">Answer a few questions about your story</p>
+      </div>
 
       {/* Conversation history */}
-      <div className="flex-1 overflow-y-auto mb-6 space-y-4">
-        <AnimatePresence>
+      <div className="flex-1 overflow-y-auto mb-8 space-y-6">
+        <AnimatePresence mode="popLayout">
           {conversation.map((msg, idx) => (
             <motion.div
               key={idx}
-              initial={{ opacity: 0, x: msg.role === 'user' ? 20 : -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`max-w-[70%] p-4 rounded-lg ${msg.role === 'user' ? 'bg-blue-900/50 text-blue-100' : 'bg-gray-800/50 text-gray-100'}`}>
-                {msg.content}
+              <div className={`max-w-[85%] ${msg.role === 'user'
+                ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl rounded-tr-lg'
+                : 'bg-gray-700/60 text-gray-50 rounded-2xl rounded-tl-lg'} p-4 shadow-lg`}>
+                <p className="text-sm leading-relaxed">{msg.content}</p>
               </div>
             </motion.div>
           ))}
@@ -263,35 +269,38 @@ function ClarificationDialog({ conversation, currentQuestion, userAnswer, onAnsw
 
         {currentQuestion && (
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             className="flex justify-start"
           >
-            <div className="bg-gray-800/50 text-gray-100 p-4 rounded-lg max-w-[70%]">
-              {currentQuestion}
+            <div className="bg-gray-700/60 text-gray-50 rounded-2xl rounded-tl-lg p-4 max-w-[85%] shadow-lg">
+              <p className="text-sm leading-relaxed font-medium">{currentQuestion}</p>
             </div>
           </motion.div>
         )}
       </div>
 
       {/* Answer input */}
-      <form onSubmit={onSubmit} className="space-y-4">
-        <textarea
-          className="input-field min-h-[80px]"
-          placeholder="Your answer..."
-          value={userAnswer}
-          onChange={e => onAnswerChange(e.target.value)}
-          disabled={loading}
-        />
+      <form onSubmit={onSubmit} className="space-y-4 border-t border-gray-600/30 pt-6">
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-2">Your response:</label>
+          <textarea
+            className="input-field min-h-[80px] resize-none"
+            placeholder="Type your answer here..."
+            value={userAnswer}
+            onChange={e => onAnswerChange(e.target.value)}
+            disabled={loading}
+          />
+        </div>
 
         <motion.button
           type="submit"
           disabled={loading || !userAnswer.trim()}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           className="btn-primary w-full"
         >
-          {loading ? 'Processing...' : 'Continue'}
+          {loading ? 'Analyzing...' : 'Send'}
         </motion.button>
       </form>
     </motion.div>
@@ -300,57 +309,62 @@ function ClarificationDialog({ conversation, currentQuestion, userAnswer, onAnsw
 
 function ReviewStep({ config, summary, onConfirm, onRevise, loading }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel p-8 max-w-3xl mx-auto">
-      <h2 className="text-2xl font-bold text-white mb-6">Here's my understanding...</h2>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel p-8 max-w-2xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">Ready to create?</h2>
+        <p className="text-gray-400 text-sm">Here's what I understand about your story</p>
+      </div>
 
       {/* Summary from AI */}
-      <div className="bg-gray-800/50 p-6 rounded-lg mb-8 text-gray-100 leading-relaxed">
-        {summary}
+      <div className="bg-gray-700/60 p-6 rounded-xl mb-8 text-gray-50 leading-relaxed border border-gray-600/30">
+        <p className="text-sm">{summary}</p>
       </div>
 
       {/* Config display */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-gray-900/50 p-4 rounded">
-          <p className="text-sm text-gray-400">Story Universe</p>
-          <p className="text-white font-semibold">{config.story_universe}</p>
+      <div className="space-y-4 mb-8">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Universe</p>
+            <p className="text-white font-medium">{config.story_universe || '—'}</p>
+          </div>
+          <div className="bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Power Level</p>
+            <p className="text-white font-medium capitalize">{config.power_level}</p>
+          </div>
+          <div className="bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Isolation</p>
+            <p className="text-white font-medium text-sm">{config.isolate_powerset ? 'Pure mechanics' : 'With context'}</p>
+          </div>
+          <div className="bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Tone</p>
+            <p className="text-white font-medium capitalize">{config.story_tone}</p>
+          </div>
         </div>
-        <div className="bg-gray-900/50 p-4 rounded">
-          <p className="text-sm text-gray-400">Power Level</p>
-          <p className="text-white font-semibold capitalize">{config.power_level}</p>
-        </div>
-        <div className="bg-gray-900/50 p-4 rounded">
-          <p className="text-sm text-gray-400">Powerset Isolation</p>
-          <p className="text-white font-semibold">{config.isolate_powerset ? 'Yes (Pure mechanics)' : 'No (With context)'}</p>
-        </div>
-        <div className="bg-gray-900/50 p-4 rounded">
-          <p className="text-sm text-gray-400">Story Tone</p>
-          <p className="text-white font-semibold capitalize">{config.story_tone}</p>
-        </div>
-        <div className="bg-gray-900/50 p-4 rounded col-span-2">
-          <p className="text-sm text-gray-400">Chapter Length</p>
-          <p className="text-white font-semibold">{config.chapter_min_words}-{config.chapter_max_words} words</p>
+        <div className="bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Chapter Length</p>
+          <p className="text-white font-medium">{config.chapter_min_words.toLocaleString()}–{config.chapter_max_words.toLocaleString()} words</p>
         </div>
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-4">
+      <div className="flex gap-3">
         <motion.button
           onClick={onRevise}
           disabled={loading}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           className="btn-secondary flex-1"
         >
-          Let me clarify something
+          Go back & revise
         </motion.button>
         <motion.button
           onClick={onConfirm}
           disabled={loading}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           className="btn-primary flex-1"
         >
-          {loading ? 'Creating...' : 'Perfect! Start my story'}
+          {loading ? 'Creating...' : 'Let's go!'}
         </motion.button>
       </div>
     </motion.div>
@@ -362,15 +376,15 @@ function ConfirmingStep() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="glass-panel p-8 max-w-2xl mx-auto text-center"
+      className="glass-panel p-12 max-w-xl mx-auto text-center"
     >
       <motion.div
         animate={{ rotate: 360 }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-        className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-6"
+        transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+        className="w-14 h-14 border-4 border-blue-500 border-t-blue-200 rounded-full mx-auto mb-8"
       />
-      <h2 className="text-2xl font-bold text-white mb-4">Creating your story...</h2>
-      <p className="text-gray-400">Initializing World Bible and preparing narrative generation.</p>
+      <h2 className="text-3xl font-bold text-white mb-3">Creating your story</h2>
+      <p className="text-gray-400 text-sm">Setting up the World Bible and preparing narrative generation...</p>
     </motion.div>
   );
 }
