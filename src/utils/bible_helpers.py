@@ -313,7 +313,7 @@ async def verify_bible_integrity(story_id: str) -> list[str]:
     Verify Bible data integrity after chapter generation.
     Returns list of issues found. If issues found, auto-fixes them.
     """
-    from src.utils.bible_validator import validate_bible_integrity, validate_and_fix_bible_entry
+    from src.utils.bible_validator import validate_bible_integrity, validate_and_fix_bible_entry, validate_full_bible_schema
 
     issues = []
 
@@ -327,8 +327,13 @@ async def verify_bible_integrity(story_id: str) -> list[str]:
 
         content = copy.deepcopy(bible.content)
 
-        # Run integrity check
+        # Run field-level integrity check
         issues = validate_bible_integrity(content)
+
+        # Run full schema validation pass (non-blocking in warn mode)
+        schema_valid, schema_issues = validate_full_bible_schema(content, mode="warn")
+        if schema_issues:
+            issues.extend([f"[schema] {i}" for i in schema_issues])
 
         if issues:
             # Auto-fix by running validator on problematic sections

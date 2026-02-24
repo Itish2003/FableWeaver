@@ -6,7 +6,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from src.database import AsyncSessionLocal
 from src.models import WorldBible
 from datetime import datetime
-from src.utils.bible_validator import validate_and_fix_bible_entry, check_power_origin_context_leakage
+from src.utils.bible_validator import validate_and_fix_bible_entry, check_power_origin_context_leakage, validate_bible_section
 
 # Paths
 BIBLE_PATH = "src/world_bible.json"
@@ -285,7 +285,13 @@ class BibleTools:
                         current = current[k]
 
                     # Validate and fix the value before saving (converts legacy formats)
-                    validated_value = validate_and_fix_bible_entry(key, value)
+                    fixed_value = validate_and_fix_bible_entry(key, value)
+
+                    # Step 2.5: Schema validation (non-blocking in warn mode)
+                    from src.config import get_settings
+                    settings = get_settings()
+                    validation_mode = settings.bible_schema_validation_mode
+                    validated_value = validate_bible_section(key, fixed_value, mode=validation_mode)
                     current[keys[-1]] = validated_value
 
                     # Check for power context leakage if updating power_origins
