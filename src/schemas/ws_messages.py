@@ -48,7 +48,7 @@ class InitPayload(BaseModel):
 
 
 class ChoicePayload(BaseModel):
-    choice: str = Field(default="", max_length=10_000)
+    choice: str = Field(default="", max_length=100_000)
     question_answers: Dict[str, str] = Field(default_factory=dict)
 
 
