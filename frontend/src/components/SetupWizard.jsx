@@ -209,12 +209,15 @@ function InitialInputForm({ onSubmit, value, onChange, loading }) {
 
       <form onSubmit={onSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-semibold text-gray-300 mb-3">
-            Your Story Idea
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Your Story Idea or Character Framework
           </label>
+          <p className="text-xs text-gray-400 mb-3">
+            Paste your full character framework, story premise, or detailed context (supports large datasets)
+          </p>
           <textarea
-            className="input-field min-h-[140px] resize-none"
-            placeholder="E.g., 'Crossover story where Kudou gets powers from another universe. I want strict canon accuracy...'"
+            className="input-field min-h-[400px] resize-vertical font-mono text-sm"
+            placeholder="Paste detailed character framework, story premise, power system details, or any structured data here. You can paste 11KB+ of text..."
             value={value}
             onChange={e => onChange(e.target.value)}
             disabled={loading}
