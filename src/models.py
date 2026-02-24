@@ -68,8 +68,9 @@ class WorldBible(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True) # Usually just one per story, match story_id or separate UUID
     story_id: Mapped[str] = mapped_column(ForeignKey("stories.id"), unique=True)
-    
+
     content: Mapped[dict] = mapped_column(JSON, default=dict) # The actual JSON content of the bible
+    version_number: Mapped[int] = mapped_column(Integer, default=1) # Optimistic concurrency control: increment on each update
     server_log_mirror: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Store recent logs or full log dump? keeping it simple for now.
 
     story: Mapped["Story"] = relationship("Story", back_populates="world_bible")

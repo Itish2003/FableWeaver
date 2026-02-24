@@ -333,6 +333,16 @@ class BibleDelta(BaseModel):
         description="JSON string of updates to world_state.factions"
     )
 
+    # Context leakage detection (set by Archivist when cross-universe terms are found)
+    context_leakage_detected: bool = Field(
+        default=False,
+        description="True if source-universe terminology was found in power_origins or other lore fields"
+    )
+    context_leakage_details: Optional[str] = Field(
+        default=None,
+        description="Description of what leaked and where (e.g., 'JJK term Cursed Technique in power_origins')"
+    )
+
     # Brief summary for logging
     summary: str = Field(
         default="",

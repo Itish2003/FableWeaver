@@ -136,7 +136,7 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                         elif event_author == "archivist" or "archivist" in event_author.lower():
                             # ARCHIVIST STRUCTURED OUTPUT PROCESSING
                             logger.log("archivist_output", f"Received Archivist output: {text_chunk[:500]}...")
-                            await _process_archivist_output(ctx.story_id, text_chunk)
+                            await _process_archivist_output(ctx.story_id, text_chunk, ctx.websocket)
                         else:
                             # Log research agent output for debugging but don't send to user
                             logger.log("research_output", f"[{event_author}] {text_chunk[:200]}...")
@@ -305,14 +305,41 @@ def _extract_text_chunk(event) -> str:
     return text_chunk
 
 
-async def _process_archivist_output(story_id: str, text_chunk: str) -> None:
-    """Parse and apply the Archivist's BibleDelta JSON output."""
+async def _process_archivist_output(story_id: str, text_chunk: str, websocket=None) -> None:
+    """Parse and apply the Archivist's BibleDelta JSON output.
+
+    If the Archivist set context_leakage_detected=True, a non-blocking alert
+    is sent to the frontend via a ``context_leakage_alert`` WS message so the
+    user can review and optionally roll back via the undo action.
+    """
     try:
         from src.schemas import BibleDelta
         from src.utils.bible_delta_processor import apply_bible_delta
 
         delta_json = json.loads(text_chunk)
         delta = BibleDelta(**delta_json)
+
+        # --- Context leakage detection (non-blocking) ---
+        if delta.context_leakage_detected:
+            _logger.warning(
+                "context_leakage_detected | story_id=%s | details=%s",
+                story_id,
+                delta.context_leakage_details,
+            )
+            logger.log(
+                "context_leakage",
+                f"Archivist flagged context leakage for story {story_id}: {delta.context_leakage_details}",
+            )
+            if websocket is not None:
+                try:
+                    await manager.send_json({
+                        "type": "context_leakage_alert",
+                        "details": delta.context_leakage_details or "Cross-universe terminology detected in Bible update.",
+                        "recoverable": True,
+                        "hint": "The Archivist rewrote the affected fields. Use 'undo' if the correction looks wrong.",
+                    }, websocket)
+                except WebSocketDisconnect:
+                    pass
 
         result = await apply_bible_delta(story_id, delta)
         if result["success"]:
