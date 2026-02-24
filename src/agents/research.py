@@ -669,7 +669,7 @@ Use `update_bible` with DOT NOTATION for nested updates.
 **CANON TIMELINE FORMAT** (`canon_timeline.events`):
 This is CRITICAL for timeline-aware storytelling. Store DATED canonical events here.
 ```json
-{
+{{
   "date": "YYYY-MM-DD or 'Month YYYY' or relative like '3 years before main story'",
   "event": "Description of what happened",
   "universe": "Which universe this belongs to",
@@ -678,7 +678,7 @@ This is CRITICAL for timeline-aware storytelling. Store DATED canonical events h
   "status": "background/upcoming",
   "characters_involved": ["List of key characters"],
   "consequences": ["What this event leads to"]
-}
+}}
 ```
 
 **CRITICAL STATUS ASSIGNMENT:**
@@ -702,7 +702,7 @@ limitations (with reason and source), and power_scaling info.
 
 **FACTION FORMAT** (`world_state.factions.<FactionName>`):
 ```json
-{
+{{
   "name": "Official faction name",
   "universe": "Source universe",
   "type": "Organization/Government/Criminal/Hero Team/Family/etc.",
@@ -710,20 +710,20 @@ limitations (with reason and source), and power_scaling info.
   "headquarters": "Where they operate from / live",
   "hierarchy": ["Leader", "Officers", "Members"],
   "complete_member_roster": [
-    {
+    {{
       "name": "Member name",
       "cape_name": "Hero/Villain name if applicable",
       "role": "Leader/Member/Support",
       "powers": "Brief power description",
       "family_relation": "Relationship to other members if any",
       "typical_activities": "What they usually do (patrols, hospital, school, etc.)"
-    }
+    }}
   ],
   "family_relationships": "Describe family connections between members",
   "disposition_to_protagonist": "Allied/Neutral/Hostile/Unknown",
   "living_situation": "Do they live together? Where?",
   "source": "[citation]"
-}
+}}
 ```
 **CRITICAL**: For hero teams, villain groups, and family organizations:
 - Include ALL members, not just main/popular characters
@@ -734,7 +734,7 @@ limitations (with reason and source), and power_scaling info.
 **LOCATION FORMAT** (`world_state.locations.<LocationName>`):
 Locations are CRITICAL for grounded, immersive world-building. Research and populate ALL fields:
 ```json
-{
+{{
   "name": "The Docks",
   "type": "neighborhood/building/landmark/city/region",
   "city": "Brockton Bay",
@@ -755,26 +755,26 @@ Locations are CRITICAL for grounded, immersive world-building. Research and popu
     "Taylor's first cape fight location (vs Lung)"
   ],
   "canon_events_here": [
-    {"date": "April 2011", "event": "Taylor vs Lung", "status": "upcoming"},
-    {"date": "May 2011", "event": "Leviathan destroys much of the Docks", "status": "upcoming"}
+    {{"date": "April 2011", "event": "Taylor vs Lung", "status": "upcoming"}},
+    {{"date": "May 2011", "event": "Leviathan destroys much of the Docks", "status": "upcoming"}}
   ],
   "current_state": "Normal/Damaged/Destroyed/Under construction",
   "security_level": "none/low/medium/high/fortress",
   "source": "[WIKI]"
-}
+}}
 ```
 **POPULATE AT LEAST 8-10 LOCATIONS** for a rich, navigable world.
 
 **TERRITORY MAP** (`world_state.territory_map`):
 Quick reference for faction control - update when researching factions:
 ```json
-{
+{{
   "The Docks": "ABB/Merchants (contested)",
   "Downtown": "Neutral (PRT patrol zone)",
   "Boardwalk": "Commercial (protected)",
   "The Towers": "Empire Eighty-Eight",
   "Trainyard": "Merchants"
-}
+}}
 ```
 
 **LOCATION RESEARCH PRIORITIES:**
@@ -807,7 +807,7 @@ When OC has powers from a specific canon character, structure as:
   "combat_style": "How the original wielder typically fights - aggressive/defensive/tactical/ambush",
   "signature_moves": ["Most iconic/frequently used techniques with brief descriptions"],
   "technique_combinations": [
-    {"name": "Combo name", "components": ["tech1", "tech2"], "description": "Effect", "source": "[citation]"}
+    {{"name": "Combo name", "components": ["tech1", "tech2"], "description": "Effect", "source": "[citation]"}}
   ],
   "mastery_progression": ["Stage 1", "Stage 2", "Stage 3..."],
   "training_methods": ["How original wielder trained"],
@@ -820,7 +820,7 @@ When OC has powers from a specific canon character, structure as:
 **CHARACTER VOICE FORMAT** (`character_voices.<CharacterName>`):
 For important canon characters OC will interact with - populate ALL fields:
 ```json
-{
+{{
   "speech_patterns": "Formal/casual/technical/street/academic/military",
   "vocabulary_level": "Simple/educated/specialized/archaic/modern",
   "verbal_tics": "Repeated phrases, filler words, mannerisms, speech habits",
@@ -829,7 +829,7 @@ For important canon characters OC will interact with - populate ALL fields:
   "emotional_tells": "How their speech changes when angry/scared/happy",
   "example_dialogue": "A characteristic line from canon",
   "source": "[citation]"
-}
+}}
 ```
 **POPULATE VOICES FOR:**
 - All protagonist family members and teammates
@@ -840,7 +840,7 @@ For important canon characters OC will interact with - populate ALL fields:
 **PROTAGONIST IDENTITIES** (`character_sheet.identities.<IdentityKey>`):
 If protagonist has multiple personas (civilian, hero, vigilante, etc.), populate:
 ```json
-{
+{{
   "name": "Name/alias used for this identity",
   "type": "civilian/hero/villain/vigilante/undercover/informant",
   "is_public": true/false,
@@ -855,7 +855,7 @@ If protagonist has multiple personas (civilian, hero, vigilante, etc.), populate
   "base_of_operations": "Where they operate from as this identity",
   "cover_story": "The story that explains this identity if questioned",
   "vulnerabilities": ["How this identity could be compromised"]
-}
+}}
 ```
 **CRITICAL**: If user describes OC with dual/multiple identities, populate ALL of them.
 
@@ -866,20 +866,20 @@ If protagonist has multiple personas (civilian, hero, vigilante, etc.), populate
 **CANON CHARACTER INTEGRITY** (`canon_character_integrity.protected_characters`):
 For major canon characters to prevent "Worfing":
 ```json
-{
+{{
   "name": "Character name",
   "minimum_competence": "What they can ALWAYS do",
   "signature_moments": ["Feats that define their power level"],
   "intelligence_level": "genius/smart/average/below_average",
   "cannot_be_beaten_by": ["Types of opponents below their level"],
   "anti_worf_notes": "Specific things NOT to do with this character"
-}
+}}
 ```
 
 **PROTAGONIST RELATIONSHIPS** (`character_sheet.relationships.<CharacterName>`):
 When researching family/team relationships, populate protagonist's personal relationships:
 ```json
-{
+{{
   "type": "family/ally/enemy/mentor/rival/romantic/teammate",
   "relation": "specific relation (mother, sister, cousin-in-law, team leader, etc.)",
   "trust": "complete/high/medium/low/hostile",
@@ -888,7 +888,7 @@ When researching family/team relationships, populate protagonist's personal rela
   "dynamics": "Brief description of relationship dynamic",
   "living_situation": "Same household/nearby/distant",
   "role_in_story": "What role they play (mentor, confidant, liability, etc.)"
-}
+}}
 ```
 **CRITICAL**: For family-based teams (like New Wave), convert ALL faction members to relationships:
 - If protagonist is adopted into Dallon family → Carol, Mark, Victoria, Amy are family
@@ -898,10 +898,10 @@ When researching family/team relationships, populate protagonist's personal rela
 **ENTITY ALIASES** (`world_state.entity_aliases`):
 Track all names/aliases for characters to prevent confusion:
 ```json
-{
+{{
   "Taylor_Hebert": ["Taylor", "Skitter", "Weaver", "Khepri"],
   "Gojo_Satoru": ["Gojo", "Satoru", "The Strongest", "Six Eyes user"]
-}
+}}
 ```
 
 **KNOWLEDGE BOUNDARIES FORMAT** (`knowledge_boundaries`) - CRITICAL FOR ACCURACY:
@@ -916,30 +916,30 @@ Things READERS know but CHARACTERS don't. Example for Worm:
 `knowledge_boundaries.character_secrets`:
 What specific characters are hiding:
 ```json
-{
-  "Amy_Dallon": {
+{{
+  "Amy_Dallon": {{
     "secret": "Her power can affect brains and she's terrified of it. She hasn't told anyone the true depth of her abilities.",
     "known_by": [],
     "absolutely_hidden_from": ["Carol Dallon", "Victoria Dallon", "Everyone"]
-  },
-  "Taylor_Hebert": {
+  }},
+  "Taylor_Hebert": {{
     "secret": "She is Skitter/works with villains",
     "known_by": ["Undersiders"],
     "absolutely_hidden_from": ["Her father (initially)", "School"]
-  }
-}
+  }}
+}}
 ```
 
 `knowledge_boundaries.character_knowledge_limits`:
 What each character knows or doesn't know:
 ```json
-{
-  "Amy_Dallon": {
+{{
+  "Amy_Dallon": {{
     "knows": ["Medicine", "Biology", "Her power's true extent"],
     "doesnt_know": ["Shards", "Her biological father's current status"],
     "suspects": ["Something is wrong with how powers work"]
-  }
-}
+  }}
+}}
 ```
 
 `knowledge_boundaries.common_knowledge`:
