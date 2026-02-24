@@ -43,8 +43,8 @@ class InitPayload(BaseModel):
     universes: List[str] = Field(default_factory=lambda: ["General"], max_length=20)
     timeline_deviation: str = Field(default="", max_length=100_000)
     user_input: str = Field(default="", max_length=100_000)
-    genre: str = Field(default="Fantasy", max_length=200)
-    theme: str = Field(default="Mystery", max_length=200)
+    genre: str = Field(default="Fantasy", max_length=500)
+    theme: str = Field(default="Mystery", max_length=10_000)
 
 
 class ChoicePayload(BaseModel):
