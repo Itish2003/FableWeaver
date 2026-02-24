@@ -461,9 +461,15 @@ def check_power_origin_context_leakage(power_origin: dict, universe: Optional[st
                             f"(move to source_universe_context)"
                         )
 
-    # Check other fields
+    # Check other fields (handle both string and list fields)
     for field in fields_to_check:
-        text = power_origin.get(field, "").lower()
+        value = power_origin.get(field, "")
+        # Handle list fields (e.g., weaknesses_and_counters is List[str])
+        if isinstance(value, list):
+            text = " ".join(str(item) for item in value).lower()
+        else:
+            text = str(value).lower()
+
         for category, terms in universe_specific_terms.items():
             for term in terms:
                 if term in text:

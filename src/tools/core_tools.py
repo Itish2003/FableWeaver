@@ -1,4 +1,5 @@
 import json
+import asyncio
 from typing import Optional, Any, List
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
@@ -288,31 +289,37 @@ class BibleTools:
                     current[keys[-1]] = validated_value
 
                     # Check for power context leakage if updating power_origins
-                    if "power_origins" in key and isinstance(validated_value, dict):
-                        leakage_warnings = check_power_origin_context_leakage(validated_value)
-                        if leakage_warnings:
-                            for warning in leakage_warnings:
-                                logger.warning(
-                                    f"⚠️  CONTEXT LEAKAGE DETECTED in '{key}': {warning}\n"
-                                    f"    → Move universe-specific terminology to 'source_universe_context' field"
-                                )
+                    # Handle both dict (single power) and list (multiple powers) formats
+                    if "power_origins" in key:
+                        targets = validated_value if isinstance(validated_value, list) else [validated_value]
+                        for target in targets:
+                            if isinstance(target, dict):
+                                leakage_warnings = check_power_origin_context_leakage(target)
+                                if leakage_warnings:
+                                    for warning in leakage_warnings:
+                                        logger.warning(
+                                            f"⚠️  CONTEXT LEAKAGE DETECTED in '{key}': {warning}\n"
+                                            f"    → Move universe-specific terminology to 'source_universe_context' field"
+                                        )
 
                     # Step 3: Attempt write with version check
-                    # Re-fetch to check for concurrent modifications
-                    refresh_stmt = select(WorldBible).where(
-                        WorldBible.story_id == self.story_id
+                    # Use scalar query to bypass SQLAlchemy identity map and get fresh version from DB
+                    current_version = await session.scalar(
+                        select(WorldBible.version_number).where(
+                            WorldBible.story_id == self.story_id
+                        )
                     )
-                    refresh_result = await session.execute(refresh_stmt)
-                    current_bible = refresh_result.scalar_one_or_none()
 
-                    if current_bible.version_number != original_version:
+                    if current_version != original_version:
                         # Version mismatch: another update occurred while we were modifying
                         await session.rollback()
                         if attempt < max_retries - 1:
+                            wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1s, 0.2s, 0.4s
                             logger.debug(
-                                f"Version conflict on '{key}' (v{original_version} → v{current_bible.version_number}). "
-                                f"Retrying... (attempt {attempt + 1}/{max_retries})"
+                                f"Version conflict on '{key}' (v{original_version} → v{current_version}). "
+                                f"Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
                             )
+                            await asyncio.sleep(wait_time)
                             continue  # Retry the entire operation
                         else:
                             return (
@@ -321,14 +328,19 @@ class BibleTools:
                             )
 
                     # Step 4: Commit with incremented version
-                    current_bible.content = data
-                    current_bible.version_number += 1
-                    flag_modified(current_bible, "content")
+                    # Re-fetch bible object for commit (identity map has current version now)
+                    bible_for_commit = await session.execute(
+                        select(WorldBible).where(WorldBible.story_id == self.story_id)
+                    )
+                    bible_for_commit = bible_for_commit.scalar_one_or_none()
+                    bible_for_commit.content = data
+                    bible_for_commit.version_number += 1
+                    flag_modified(bible_for_commit, "content")
 
                     await session.commit()
 
                     logger.debug(
-                        f"Successfully updated '{key}' (v{original_version} → v{current_bible.version_number})"
+                        f"Successfully updated '{key}' (v{original_version} → v{bible_for_commit.version_number})"
                     )
 
                     # Sync to disk for debugging (User Requirement)
@@ -344,7 +356,7 @@ class BibleTools:
                 logger.error(f"Error in update_bible attempt {attempt + 1}: {str(e)}")
                 try:
                     await session.rollback()
-                except:
+                except Exception:
                     pass
                 if attempt == max_retries - 1:
                     return f"Error updating bible after {max_retries} retries: {str(e)}"
