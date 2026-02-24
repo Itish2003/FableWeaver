@@ -725,10 +725,13 @@ def validate_bible_section(
         return parsed.model_dump(exclude_none=False, by_alias=False)
     except ValidationError as exc:
         log_fn = logger.error if mode == "error" else logger.warning
+        # Always log details so Lore Keeper can see what's wrong
+        error_details = "\n".join(str(e) for e in exc.errors()[:3])  # First 3 errors
         log_fn(
-            "Bible section '%s' failed schema validation: %d error(s)",
+            "Bible section '%s' failed schema validation: %d error(s)\n%s",
             section,
             exc.error_count(),
+            error_details,
         )
         if mode == "strict":
             raise
