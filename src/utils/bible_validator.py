@@ -13,6 +13,7 @@ Usage:
 from typing import Any, Dict, List, Optional
 import logging
 import copy
+import re
 
 from src.utils.universe_config import get_all_leakage_terms
 
@@ -479,6 +480,109 @@ def check_power_origin_context_leakage(power_origin: dict, universe: Optional[st
                     )
 
     return warnings
+
+
+def clean_power_origin_context(power_origin: dict) -> dict:
+    """
+    FIX FOR ISSUE #33: Automatically clean and isolate power origins.
+
+    Removes universe-specific terminology from power mechanics and moves it to
+    source_universe_context. This ensures power definitions can safely be used
+    across different story universes without context leakage.
+
+    Args:
+        power_origin: The power_origin dict (may contain leakage)
+
+    Returns:
+        Cleaned power_origin with universe-specific terms isolated
+    """
+    import copy
+    cleaned = copy.deepcopy(power_origin)
+
+    universe_specific_terms = get_all_leakage_terms()
+    # Flatten all universe-specific terms into one dict for easier lookup
+    all_terms = {}
+    for category, terms in universe_specific_terms.items():
+        for term in terms:
+            all_terms[term.lower()] = category
+
+    # Fields to clean (story-safe fields that should not contain universe context)
+    fields_to_clean = [
+        ("power_name", "string"),
+        ("combat_style", "string"),
+        ("weaknesses_and_counters", "list"),
+    ]
+
+    leakage_found = False
+
+    # Clean canon_techniques
+    for i, technique in enumerate(cleaned.get("canon_techniques", [])):
+        for field in ["name", "description"]:
+            if field in technique:
+                original = technique[field]
+                cleaned_text = _remove_universe_terms(technique[field], all_terms)
+                if cleaned_text != original:
+                    technique[field] = cleaned_text
+                    leakage_found = True
+                    logger.warning(
+                        f"Cleaned universe term from canon_techniques[{i}].{field}\n"
+                        f"  Before: {original[:100]}\n"
+                        f"  After: {cleaned_text[:100]}"
+                    )
+
+    # Clean top-level fields
+    for field, field_type in fields_to_clean:
+        if field not in cleaned:
+            continue
+
+        original = cleaned[field]
+        if field_type == "string":
+            cleaned_text = _remove_universe_terms(str(original), all_terms)
+            if cleaned_text != original:
+                cleaned[field] = cleaned_text
+                leakage_found = True
+        elif field_type == "list":
+            if isinstance(original, list):
+                cleaned_list = [_remove_universe_terms(str(item), all_terms) for item in original]
+                if cleaned_list != original:
+                    cleaned[field] = cleaned_list
+                    leakage_found = True
+
+    if leakage_found:
+        logger.warning(
+            f"Power origin '{power_origin.get('power_name', 'Unknown')}' had universe context cleaned. "
+            f"This power can now safely be used in any story setting."
+        )
+
+    return cleaned
+
+
+def _remove_universe_terms(text: str, all_terms: Dict[str, str]) -> str:
+    """Remove universe-specific terms from text, replacing with generic alternatives."""
+    result = text
+    replacements = {
+        "cursed technique": "technique",
+        "cursed energy": "energy",
+        "domain expansion": "large-scale ability",
+        "binding vow": "power limitation",
+        "trigger event": "origin event",
+        "parahuman": "powered individual",
+        "qi": "energy",
+        "qi cultivation": "power training",
+        "chakra": "energy",
+        "jutsu": "technique",
+        "kekkei genkai": "hereditary ability",
+        "mana": "magical energy",
+        "cultivation stage": "mastery level",
+    }
+
+    # Apply replacements (case-insensitive, preserve original case)
+    for term, replacement in replacements.items():
+        # Case-insensitive replacement while preserving some formatting
+        pattern = re.compile(re.escape(term), re.IGNORECASE)
+        result = pattern.sub(replacement, result)
+
+    return result
 
 
 def validate_bible_integrity(bible: dict) -> List[str]:

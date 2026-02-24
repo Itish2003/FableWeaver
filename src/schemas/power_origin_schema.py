@@ -39,32 +39,54 @@ class CanonTechnique(BaseModel):
     @field_validator("name", "description")
     @classmethod
     def validate_no_source_universe_terms(cls, v: str) -> str:
-        """Detect common source-universe terminology that shouldn't be here."""
+        """Detect common source-universe terminology that shouldn't be here.
+
+        FIX FOR ISSUE #33: Enhanced validation to catch universe context leakage.
+        Rather than silently passing, we now log violations for the Archivist to catch
+        during review of BibleDelta output.
+        """
         # Common universe-specific terms that indicate context leakage
         banned_terms = {
             # JJK terms
             "cursed technique": "Use generic terms like 'technique' or 'power' instead",
             "cursed energy": "Use 'energy' or 'power source' instead",
             "jujutsu": "Describe the mechanics, not the system name",
-            "domain": "Describe the effect, not the domain term",
+            "domain expansion": "Describe the effect, not domain-specific terms",
+            "binding vow": "This is JJK-specific - describe the mechanic instead",
 
             # Worm terms
-            "power": "Too generic when describing a specific power",
             "shard": "This is Worm-specific meta-knowledge - should be in source_universe_context",
-            "trigger": "This is Worm-specific - describe the origin differently",
+            "trigger event": "This is Worm-specific - describe the origin differently",
             "parahuman": "System-specific term - describe the person/power instead",
+            "entity": "This is Worm-specific metaknowledge - not a crossover mechanic",
 
             # Generic anime/LN terms that suggest context leakage
             "cultivation stage": "If describing progression, be explicit about levels",
             "qi": "Use 'energy' instead of system-specific terms",
+            "qi cultivation": "Use 'power training' or 'practice' instead",
             "mana": "Use 'energy' instead of system-specific terms",
+            "chakra": "Use 'energy' instead of system-specific terms",
+            "jutsu": "Use 'technique' instead of system-specific terms",
+            "kekkei genkai": "Use 'hereditary ability' or 'lineage power' instead",
         }
 
         v_lower = v.lower()
+        violations = []
         for term, suggestion in banned_terms.items():
             if term in v_lower:
-                # Only warn, don't strictly reject - false positives possible
-                pass  # Validator can be strict later if needed
+                violations.append(f"Found '{term}': {suggestion}")
+
+        # Issue #33 FIX: Log violations for Archivist review
+        # These will be caught by check_power_origin_context_leakage() at write time
+        if violations:
+            import logging
+            logger = logging.getLogger("fable.power_origin_schema")
+            logger.debug(
+                f"Potential universe context leakage detected in canon technique:\n"
+                f"  Value: {v}\n"
+                f"  Violations:\n" +
+                "\n".join(f"    - {v}" for v in violations)
+            )
 
         return v
 

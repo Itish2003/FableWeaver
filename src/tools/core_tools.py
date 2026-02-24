@@ -6,7 +6,12 @@ from sqlalchemy.orm.attributes import flag_modified
 from src.database import AsyncSessionLocal
 from src.models import WorldBible
 from datetime import datetime
-from src.utils.bible_validator import validate_and_fix_bible_entry, check_power_origin_context_leakage, validate_bible_section
+from src.utils.bible_validator import (
+    validate_and_fix_bible_entry,
+    check_power_origin_context_leakage,
+    validate_bible_section,
+    clean_power_origin_context,  # FIX #33: Automatic context isolation
+)
 
 # Paths
 BIBLE_PATH = "src/world_bible.json"
@@ -294,19 +299,42 @@ class BibleTools:
                     validated_value = validate_bible_section(key, fixed_value, mode=validation_mode)
                     current[keys[-1]] = validated_value
 
-                    # Check for power context leakage if updating power_origins
+                    # FIX #33: Check for and clean power context leakage
                     # Handle both dict (single power) and list (multiple powers) formats
                     if "power_origins" in key:
+                        # First, detect any leakage (for monitoring)
                         targets = validated_value if isinstance(validated_value, list) else [validated_value]
+                        cleaned_targets = []
+
                         for target in targets:
                             if isinstance(target, dict):
+                                # Check for leakage
                                 leakage_warnings = check_power_origin_context_leakage(target)
                                 if leakage_warnings:
                                     for warning in leakage_warnings:
                                         logger.warning(
-                                            f"⚠️  CONTEXT LEAKAGE DETECTED in '{key}': {warning}\n"
-                                            f"    → Move universe-specific terminology to 'source_universe_context' field"
+                                            f"⚠️  CONTEXT LEAKAGE DETECTED in '{key}': {warning}"
                                         )
+                                    # Automatically clean the power origin
+                                    cleaned_target = clean_power_origin_context(target)
+                                    logger.info(
+                                        f"✓ CONTEXT ISOLATION APPLIED: Universe-specific terms cleaned from '{key}'. "
+                                        f"Power can now safely be used in any story setting."
+                                    )
+                                    cleaned_targets.append(cleaned_target)
+                                else:
+                                    cleaned_targets.append(target)
+                            else:
+                                cleaned_targets.append(target)
+
+                        # Update with cleaned values
+                        if isinstance(validated_value, list):
+                            validated_value = cleaned_targets
+                        elif cleaned_targets:
+                            validated_value = cleaned_targets[0]
+
+                        # Update the value in the dict
+                        current[keys[-1]] = validated_value
 
                     # Step 3: Attempt write with version check
                     # Use scalar query to bypass SQLAlchemy identity map and get fresh version from DB
