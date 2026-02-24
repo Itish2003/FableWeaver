@@ -60,6 +60,21 @@ def validate_and_fix_bible_entry(path: str, value: Any) -> Any:
     elif path == "divergences.butterfly_effects" and isinstance(value, list):
         return [_fix_butterfly_effect(e) for e in value]
 
+    # Handle character_sheet.powers: convert string to dict
+    elif path == "character_sheet.powers":
+        if isinstance(value, str):
+            # Convert comma-separated string to dict
+            # "Decomposition, Regrowth, Flash Cast" → {"Decomposition": "", "Regrowth": "", "Flash Cast": ""}
+            powers_list = [p.strip() for p in value.split(',')]
+            return {power: "" for power in powers_list if power}
+        elif isinstance(value, list):
+            # Convert list to dict
+            return {power: "" for power in value if isinstance(power, str)}
+        elif isinstance(value, dict):
+            # Already correct format
+            return value
+        return {}
+
     # Handle full section updates
     # Support both "stakes_tracking" and "stakes_and_consequences" paths
     elif path in ("stakes_tracking", "stakes_and_consequences") and isinstance(value, dict):
@@ -780,6 +795,8 @@ def validate_full_bible_schema(
             "Full Bible schema validation found %d structural issues",
             len(issues),
         )
+        for issue in issues:
+            logger.debug("  - %s", issue)
         if mode == "strict":
             raise
         return False, issues
