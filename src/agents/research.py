@@ -1072,11 +1072,25 @@ Before EACH `update_bible` call, verify:
    - Personal knowledge (family secrets, power awareness)
    - Professional/school knowledge relevant to their situation
 
-10. **POPULATE ANTI-WORFING PROTECTIONS**
-    Populate canon_character_integrity_protected for 3-5 major canon characters:
-    - Include: name, minimum_competence, signature_moments, intelligence_level, anti_worf_notes
-    - Focus on characters the OC is most likely to interact with or fight
-    - This prevents the story from making powerful characters look weak
+10. **POPULATE ANTI-WORFING PROTECTIONS (MANDATORY - MINIMUM 5 CHARACTERS)**
+    Populate canon_character_integrity_protected for AT LEAST 5 major canon characters.
+    FAILURE TO POPULATE 5+ entries means the Storyteller has no power scaling constraints.
+    For EACH protected character, include ALL of these fields:
+    - name: Character's canonical name
+    - minimum_competence: What they can ALWAYS do even in bad circumstances
+    - signature_moments: 2-3 canonical feats that define their power ceiling (with source citations)
+    - intelligence_level: genius/smart/average/below_average
+    - cannot_be_beaten_by: Types of opponents who realistically cannot defeat them
+    - anti_worf_notes: EXPLICIT things NOT to do with this character in fanfiction
+    Prioritize: (a) strongest characters in the universe, (b) characters OC will interact with,
+    (c) characters commonly misrepresented in fanfiction.
+
+    ALSO populate canon_jobber_prevention_rules with 3-5 universe-wide power scaling rules.
+    These are general rules not tied to specific characters. Examples:
+    - "No character below city-level can survive a full-power attack from a city-level+ character"
+    - "Strategic-class magicians cannot be surprised by mundane physical attacks"
+    - "S-class threats require coordinated team responses, not solo victories"
+    Base these on the power scaling documented in the actual source material research.
 
 11. **POPULATE CHARACTER SECRETS AND KNOWLEDGE LIMITS**
     From research, populate knowledge_character_secrets and knowledge_character_limits:
@@ -1104,6 +1118,7 @@ Before EACH `update_bible` call, verify:
     Return a single LoreKeeperOutput JSON object with ALL populated fields.
     New fields to include: character_voices, character_sheet_relationships,
     character_sheet_knowledge, canon_character_integrity_protected,
+    canon_jobber_prevention_rules,
     knowledge_character_secrets, knowledge_character_limits, upcoming_canon_events,
     power_interactions, world_state_magic_system, world_state_entity_aliases.
     Omit fields that have no data (use empty lists/dicts for defaults).
@@ -1150,7 +1165,8 @@ automatically process your output to populate the World Bible.
 ✓ power_origins_sources - At least one power origin with full structure
 ✓ character_voices - Voice profiles for 5+ key characters
 ✓ character_sheet_relationships - OC's initial relationship network
-✓ canon_character_integrity_protected - Anti-Worfing rules for 3-5 major characters
+✓ canon_character_integrity_protected - Anti-Worfing rules for 5+ major characters (MINIMUM 5)
+✓ canon_jobber_prevention_rules - 3-5 universe-wide power scaling rules
 ✓ knowledge_character_secrets - Per-character secrets
 ✓ knowledge_character_limits - Per-character knowledge limits
 

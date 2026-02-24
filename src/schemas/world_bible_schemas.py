@@ -315,6 +315,39 @@ class NewDivergence(GeminiCompatibleModel):
     affected_canon_events: List[str] = Field(default_factory=list)
 
 
+class KnowledgeViolation(GeminiCompatibleModel):
+    """Records a character who referenced knowledge they should not have."""
+    model_config = ConfigDict(extra="forbid")
+
+    character_name: str = Field(..., description="Character who committed the violation")
+    concept_referenced: str = Field(..., description="The forbidden/unknown concept they referenced")
+    violation_type: str = Field(
+        default="forbidden",
+        description="Type: 'forbidden' (meta_knowledge_forbidden) | 'doesnt_know' (character_knowledge_limits) | 'secret' (character_secrets)"
+    )
+    chapter: int = Field(..., description="Chapter where the violation occurred")
+    quote_or_context: Optional[str] = Field(
+        default=None,
+        description="Brief quote or scene context where the violation occurred"
+    )
+
+
+class PowerScalingViolation(GeminiCompatibleModel):
+    """Records a protected character written below their documented competence level."""
+    model_config = ConfigDict(extra="forbid")
+
+    character_name: str = Field(..., description="Protected character who was Worfed")
+    what_happened: str = Field(..., description="How they were written below their competence level")
+    minimum_competence_violated: Optional[str] = Field(
+        default=None,
+        description="Which minimum_competence rule was broken"
+    )
+    chapter: int = Field(..., description="Chapter where the violation occurred")
+    severity: str = Field(
+        default="moderate",
+        description="Impact level: minor | moderate | major | critical"
+    )
+
 
 class BibleDelta(GeminiCompatibleModel):
     """
@@ -397,6 +430,16 @@ class BibleDelta(GeminiCompatibleModel):
     context_leakage_details: Optional[str] = Field(
         default=None,
         description="Description of what leaked and where (e.g., 'JJK term Cursed Technique in power_origins')"
+    )
+
+    # Knowledge and power scaling violations detected by Archivist
+    knowledge_violations: List[KnowledgeViolation] = Field(
+        default_factory=list,
+        description="Characters who referenced forbidden/unknown knowledge in this chapter"
+    )
+    power_scaling_violations: List[PowerScalingViolation] = Field(
+        default_factory=list,
+        description="Protected characters written below their documented competence level"
     )
 
     # Brief summary for logging
@@ -516,6 +559,12 @@ class LoreKeeperOutput(GeminiCompatibleModel):
     canon_character_integrity_protected: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Protected characters with minimum_competence, signature_moments, anti_worf_notes"
+    )
+
+    # Canon Character Integrity - Jobber prevention general rules
+    canon_jobber_prevention_rules: List[str] = Field(
+        default_factory=list,
+        description="General anti-Worfing rules that apply universe-wide (e.g., 'S-class characters cannot be defeated by mundane attacks')"
     )
 
     # Knowledge Boundaries - Character Secrets

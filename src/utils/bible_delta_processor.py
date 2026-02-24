@@ -64,6 +64,8 @@ async def apply_bible_delta(story_id: str, delta: BibleDelta) -> Dict[str, Any]:
             _apply_protagonist_status(content, delta, results)
             _apply_location_updates(content, delta, results)
             _apply_faction_updates(content, delta, results)
+            _apply_knowledge_violations(content, delta, results)
+            _apply_power_scaling_violations(content, delta, results)
 
             # Save if we made updates
             if results["updates_applied"]:
@@ -406,6 +408,36 @@ def _apply_faction_updates(content: dict, delta: BibleDelta, results: dict):
         existing.update(faction_data)
         content["world_state"]["factions"][faction_name] = existing
         results["updates_applied"].append(f"faction:{faction_name}")
+
+
+def _apply_knowledge_violations(content: dict, delta, results: dict):
+    """Log knowledge boundary violations to quality_audit."""
+    if not delta.knowledge_violations:
+        return
+    if "quality_audit" not in content:
+        content["quality_audit"] = {}
+    if "knowledge_violations" not in content["quality_audit"]:
+        content["quality_audit"]["knowledge_violations"] = []
+    for violation in delta.knowledge_violations:
+        content["quality_audit"]["knowledge_violations"].append(violation.model_dump())
+        results["updates_applied"].append(
+            f"knowledge_violation:{violation.character_name}"
+        )
+
+
+def _apply_power_scaling_violations(content: dict, delta, results: dict):
+    """Log power scaling violations to quality_audit."""
+    if not delta.power_scaling_violations:
+        return
+    if "quality_audit" not in content:
+        content["quality_audit"] = {}
+    if "power_scaling_violations" not in content["quality_audit"]:
+        content["quality_audit"]["power_scaling_violations"] = []
+    for violation in delta.power_scaling_violations:
+        content["quality_audit"]["power_scaling_violations"].append(violation.model_dump())
+        results["updates_applied"].append(
+            f"power_scaling_violation:{violation.character_name}"
+        )
 
 
 def _find_matching_entry(entries: list, new_entry: dict, match_fields: list, fuzzy_fields: list = None) -> int | None:

@@ -35,6 +35,51 @@ async def create_storyteller(story_id: str, model_name: str = None, universes: L
     setup_metadata = await get_setup_metadata(story_id)
     metadata_section = generate_storyteller_metadata_section(setup_metadata)
 
+    # Dynamic injection of forbidden knowledge and protected characters from Bible
+    forbidden_knowledge_section = ""
+    protected_characters_section = ""
+    try:
+        from src.database import AsyncSessionLocal
+        from sqlalchemy import select as sa_select
+        from src.models import WorldBible
+        async with AsyncSessionLocal() as db:
+            stmt = sa_select(WorldBible).where(WorldBible.story_id == story_id)
+            result = await db.execute(stmt)
+            bible_row = result.scalar_one_or_none()
+            if bible_row and bible_row.content:
+                kb = bible_row.content.get("knowledge_boundaries", {})
+                forbidden_list = kb.get("meta_knowledge_forbidden", [])
+                if forbidden_list:
+                    items = "\n".join(f'   - "{item}"' for item in forbidden_list[:20])
+                    forbidden_knowledge_section = (
+                        "\n   **THIS STORY'S FORBIDDEN KNOWLEDGE** (from World Bible):\n"
+                        f"{items}\n"
+                        "   NO character may reference these concepts unless canonically discovered in-story."
+                    )
+
+                cci = bible_row.content.get("canon_character_integrity", {})
+                protected = cci.get("protected_characters", [])
+                if protected:
+                    names = ", ".join(
+                        p.get("name", str(p)) if isinstance(p, dict) else str(p)
+                        for p in protected
+                    )
+                    protected_characters_section = (
+                        f"\n   **PROTECTED CHARACTERS** (anti-Worfing): {names}\n"
+                        "   These characters MUST meet their minimum_competence. Check canon_character_integrity."
+                    )
+                jobber_rules = cci.get("jobber_prevention_rules", [])
+                if jobber_rules:
+                    rules_text = "\n".join(f"   - {r}" for r in jobber_rules)
+                    protected_characters_section += f"\n   **JOBBER PREVENTION RULES:**\n{rules_text}"
+    except Exception:
+        forbidden_knowledge_section = (
+            "\n   Check `knowledge_boundaries.meta_knowledge_forbidden` for forbidden concepts."
+        )
+        protected_characters_section = (
+            "\n   Check `canon_character_integrity.protected_characters` for anti-Worfing rules."
+        )
+
     return Agent(
         name="storyteller",
         model=ResilientGemini(model=model_name),
@@ -58,6 +103,7 @@ async def create_storyteller(story_id: str, model_name: str = None, universes: L
             bible.get_divergence_ripples,    # Active divergences and butterfly effects
             bible.get_faction_overview,      # Faction dispositions and territory
             bible.validate_power_usage,      # Validates power/technique is documented
+            bible.check_knowledge_compliance,
             meta.trigger_research
         ],
         instruction=f"""
@@ -304,36 +350,28 @@ trigger_research("Winslow High School Brockton Bay layout students")
    **If you cannot verify something, DO NOT include it.**
    If you need to include something unverified, use `trigger_research` first.
 
-5. **KNOWLEDGE BOUNDARY ENFORCEMENT (CRITICAL - READ THIS CAREFULLY):**
+5. **KNOWLEDGE BOUNDARY ENFORCEMENT (CRITICAL):**
 
    ⚠️ **FORBIDDEN KNOWLEDGE - ABSOLUTE RULES** ⚠️
-   Check `knowledge_boundaries.meta_knowledge_forbidden` - these concepts DO NOT EXIST in-universe:
-   - "Shards" - NO character knows powers come from alien parasites
-   - "Entities" / "Scion's true nature" - NO ONE knows Scion is an alien
-   - "Cauldron" / "The Cycle" - Secret organization, not public knowledge
-   - "Case 53 creation" - No one knows Cauldron makes Case 53s
+   Check `knowledge_boundaries.meta_knowledge_forbidden` via `read_bible("knowledge_boundaries")`.
+{forbidden_knowledge_section}
 
-   **VIOLATION = STORY RUINED.** If ANY character (including OC's inner monologue) references
-   these concepts, you have broken the story. The narrator should also avoid these terms unless
-   the OC has canonically discovered them.
+   **MANDATORY: Use `check_knowledge_compliance(character_name, concept)` before writing
+   dialogue, inner monologue, or narrator descriptions of character awareness.**
+   - If it returns `allowed: false` → DELETE the reference entirely
+   - `violation_type: "forbidden"` → Concept does not exist in this universe
+   - `violation_type: "doesnt_know"` → Character is unaware; remove reference
+   - `violation_type: "secret"` → Secret is hidden from this person; keep it hidden
 
    ☐ **Character secrets**: Check `knowledge_boundaries.character_secrets`
      - Characters cannot reveal secrets to those in their "absolutely_hidden_from" list
-     - Check WHO is present before having a character reveal sensitive information
-
    ☐ **Character knowledge limits**: Check `knowledge_boundaries.character_knowledge_limits`
-     - Each character has: "knows", "suspects", "doesnt_know"
-     - Characters can ONLY reference things in their "knows" list as fact
-     - Characters may speculate about things in their "suspects" list
-     - Characters CANNOT mention things in their "doesnt_know" list AT ALL
+     - "knows" → OK as fact; "suspects" → OK as speculation only; "doesnt_know" → CANNOT MENTION
 
-   **DIALOGUE/THOUGHT VALIDATION CHECKLIST:**
-   Before ANY character speaks, thinks, or the narrator describes their understanding:
-   ☐ Is this in `meta_knowledge_forbidden`? → DELETE IT
-   ☐ Does this character have this in their "knows"? → OK to state as fact
-   ☐ Does this character have this in their "suspects"? → OK as speculation only
-   ☐ Does this character have this in their "doesnt_know"? → CANNOT MENTION
-   ☐ Is someone present who is in the "absolutely_hidden_from" list for a secret? → CANNOT REVEAL
+   **ANTI-WORFING ENFORCEMENT:**
+{protected_characters_section}
+   Before writing combat involving protected characters, call `get_character_profile(name)`
+   and check their `integrity_rules` for minimum_competence and anti_worf_notes.
 
 ═══════════════════════════════════════════════════════════════════════════════
                          PHASE 3: WRITING PROTOCOL
@@ -711,6 +749,12 @@ Your output MUST be a valid BibleDelta JSON with these fields:
 9. **new_butterfly_effects** - Predicted downstream consequences from divergences
 10. **protagonist_status_json** - Health, mental state changes (as JSON string)
 11. **location_updates_json** / **faction_updates_json** - World state changes (as JSON strings)
+12. **knowledge_violations** - Characters who referenced forbidden/unknown concepts.
+    Populate if you detect a character referencing meta_knowledge_forbidden or doesnt_know items.
+    Schema: {character_name, concept_referenced, violation_type, chapter, quote_or_context}
+13. **power_scaling_violations** - Protected characters written below their documented level.
+    Populate if you detect a protected character performing below minimum_competence.
+    Schema: {character_name, what_happened, minimum_competence_violated, chapter, severity}
 
 **YOUR FOCUS: CONTEXTUAL UPDATES THAT REQUIRE UNDERSTANDING**
 1. **Relationships** - Did any relationships change? Update `character_sheet.relationships`
@@ -943,7 +987,12 @@ world_state.locations.<LocationName>: {
 4. `read_bible("stakes_and_consequences")` → Current stakes state
 5. `read_bible("divergences")` → Current divergences (to find IDs for refinements)
 6. Analyze the narrative for changes
-7. Populate your BibleDelta output with:
+7. **CHECK FOR VIOLATIONS:**
+   - Compare character dialogue/thoughts against knowledge_boundaries.meta_knowledge_forbidden
+   - Check character_knowledge_limits for each character who spoke/thought
+   - Review combat scenes against canon_character_integrity.protected_characters
+   - Populate knowledge_violations and power_scaling_violations if any violations found
+8. Populate your BibleDelta output with:
    - **relationship_updates**: For each relationship that changed
    - **character_voice_updates**: For each character who spoke (if not already in Bible)
    - **knowledge_updates**: For characters who learned new info

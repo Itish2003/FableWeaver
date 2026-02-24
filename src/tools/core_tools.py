@@ -1161,9 +1161,16 @@ Unaddressed:        {unaddressed_count}/{total}
             content = bible.content
             stakes = content.get("stakes_and_consequences", content.get("stakes_tracking", {}))
 
+            # Merge power debt from BOTH locations:
+            # 1. stakes_and_consequences.power_usage_debt (Archivist/manual)
+            # 2. power_origins.usage_tracking (auto_update_bible_from_chapter)
+            power_debt_stakes = stakes.get("power_usage_debt", {})
+            power_debt_tracking = content.get("power_origins", {}).get("usage_tracking", {})
+            merged_debt = {**power_debt_tracking, **power_debt_stakes}
+
             active = {
                 "pending_consequences": stakes.get("pending_consequences", []),
-                "power_usage_debt": {k: v for k, v in stakes.get("power_usage_debt", {}).items()
+                "power_usage_debt": {k: v for k, v in merged_debt.items()
                                     if isinstance(v, dict) and v.get("strain_level") in ("high", "critical")},
                 "recent_costs": stakes.get("costs_paid", [])[-3:],  # Last 3 costs for reference
                 "recent_near_misses": stakes.get("near_misses", [])[-2:],  # Last 2 for tension
@@ -1259,14 +1266,38 @@ Unaddressed:        {unaddressed_count}/{total}
                         # Also check power_origins for details
                         for source in content.get("power_origins", {}).get("sources", []):
                             if isinstance(source, dict):
-                                techniques = source.get("canon_techniques", [])
+                                # Search both key names: Lore Keeper uses "canonical_techniques",
+                                # power_origin_schema uses "canon_techniques"
+                                techniques = source.get("canonical_techniques", source.get("canon_techniques", []))
                                 for tech in techniques:
-                                    if isinstance(tech, dict) and search_term in tech.get("name", "").lower():
+                                    tech_name = ""
+                                    if isinstance(tech, dict):
+                                        tech_name = tech.get("name", "")
+                                    elif isinstance(tech, str):
+                                        tech_name = tech.split("—")[0].strip() if "—" in tech else tech.split("-")[0].strip() if "-" in tech else tech
+                                    if search_term in tech_name.lower() or search_term in str(tech).lower():
+                                        mastery = source.get("oc_current_mastery", "unknown")
+                                        mastery_stages = source.get("mastery_progression", [])
+                                        # Find scene examples relevant to this technique
+                                        scene_examples = [
+                                            ex for ex in source.get("canon_scene_examples", [])
+                                            if isinstance(ex, dict) and (
+                                                search_term in str(ex.get("power_used", "")).lower() or
+                                                search_term in str(ex.get("scene", "")).lower()
+                                            )
+                                        ]
+                                        # Check current strain from usage_tracking
+                                        usage_tracking = content.get("power_origins", {}).get("usage_tracking", {})
+                                        power_key = source.get("power_name", source.get("name", ""))
+                                        strain_info = usage_tracking.get(power_key, {})
                                         return json.dumps({
                                             "valid": True,
                                             "power": pname,
                                             "technique_details": tech,
-                                            "mastery": source.get("oc_current_mastery", "unknown"),
+                                            "mastery": mastery,
+                                            "mastery_progression": mastery_stages,
+                                            "canon_scene_examples": scene_examples[:2],
+                                            "current_strain": strain_info.get("strain_level", "none") if isinstance(strain_info, dict) else "none",
                                             "weaknesses": source.get("weaknesses_and_counters", [])
                                         }, indent=2)
                         return json.dumps({"valid": True, "power": pname, "description": pdesc}, indent=2)
@@ -1296,4 +1327,82 @@ Unaddressed:        {unaddressed_count}/{total}
                 "warning": f"Power/technique '{power_or_technique}' not found for '{character_name}'. "
                            f"This may be an undocumented ability. Consider using trigger_research or "
                            f"checking power_origins.sources for the correct technique name."
+            })
+
+    async def check_knowledge_compliance(self, character_name: str, concept: str) -> str:
+        """
+        Check if a character is allowed to know or reference a concept.
+        Searches meta_knowledge_forbidden, character_knowledge_limits.doesnt_know,
+        and character_secrets.absolutely_hidden_from.
+        Call this BEFORE writing dialogue, thoughts, or narrator descriptions
+        where a character demonstrates awareness of a concept.
+        """
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await db.execute(stmt)
+            bible = result.scalar_one_or_none()
+            if not bible or not bible.content:
+                return json.dumps({"error": "No World Bible found"})
+
+            content = bible.content
+            kb = content.get("knowledge_boundaries", {})
+            search_term = concept.lower()
+            char_lower = character_name.lower()
+
+            # 1. Check meta_knowledge_forbidden — no character knows these
+            for forbidden in kb.get("meta_knowledge_forbidden", []):
+                if isinstance(forbidden, str) and (search_term in forbidden.lower() or forbidden.lower() in search_term):
+                    return json.dumps({
+                        "allowed": False,
+                        "reason": f"'{concept}' is meta_knowledge_forbidden. This concept does NOT exist in-universe. No character may reference it.",
+                        "violation_type": "forbidden",
+                        "forbidden_entry": forbidden
+                    })
+
+            # 2. Check character_knowledge_limits.doesnt_know
+            char_limits = kb.get("character_knowledge_limits", {})
+            matched_limits = None
+            for cname, limits in char_limits.items():
+                if char_lower in cname.lower() or cname.lower() in char_lower:
+                    matched_limits = limits
+                    break
+
+            if matched_limits and isinstance(matched_limits, dict):
+                for dk_item in matched_limits.get("doesnt_know", []):
+                    if isinstance(dk_item, str) and (search_term in dk_item.lower() or dk_item.lower() in search_term):
+                        return json.dumps({
+                            "allowed": False,
+                            "reason": f"'{character_name}' has '{dk_item}' in their doesnt_know list. They cannot reference this.",
+                            "violation_type": "doesnt_know",
+                            "doesnt_know_entry": dk_item
+                        })
+                # Check if explicitly in "knows" — clearly allowed
+                for k_item in matched_limits.get("knows", []):
+                    if isinstance(k_item, str) and (search_term in k_item.lower() or k_item.lower() in search_term):
+                        return json.dumps({
+                            "allowed": True,
+                            "reason": f"'{character_name}' explicitly knows about '{k_item}'.",
+                            "violation_type": None
+                        })
+
+            # 3. Check character_secrets — is this concept a secret hidden from this character?
+            for secret_holder, secret_data in kb.get("character_secrets", {}).items():
+                if not isinstance(secret_data, dict):
+                    continue
+                secret_text = secret_data.get("secret", "")
+                if search_term in secret_text.lower():
+                    for hidden_target in secret_data.get("absolutely_hidden_from", []):
+                        if isinstance(hidden_target, str) and (char_lower in hidden_target.lower() or hidden_target.lower() in char_lower):
+                            return json.dumps({
+                                "allowed": False,
+                                "reason": f"This secret is absolutely hidden from '{character_name}'. {secret_holder} cannot reveal it to them.",
+                                "violation_type": "secret",
+                                "secret_holder": secret_holder
+                            })
+
+            # Default: no violation found
+            return json.dumps({
+                "allowed": True,
+                "reason": f"No knowledge boundary violation found for '{character_name}' referencing '{concept}'.",
+                "violation_type": None
             })

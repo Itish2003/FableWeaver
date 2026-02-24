@@ -96,6 +96,7 @@ async def apply_lore_keeper_output(story_id: str, output: LoreKeeperOutput) -> D
             _apply_character_relationships(content, output, results)
             _apply_character_knowledge(content, output, results)
             _apply_canon_character_integrity(content, output, results)
+            _apply_jobber_prevention_rules(content, output, results)
             _apply_knowledge_secrets_and_limits(content, output, results)
             _apply_upcoming_canon_events(content, output, results)
             _apply_power_interactions(content, output, results)
@@ -244,6 +245,15 @@ def _apply_canon_character_integrity(content: Dict, output: LoreKeeperOutput, re
             content["canon_character_integrity"] = {}
         content["canon_character_integrity"]["protected_characters"] = output.canon_character_integrity_protected
         results["updates_applied"].append("canon_character_integrity.protected_characters")
+
+
+def _apply_jobber_prevention_rules(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
+    """Apply general anti-Worfing rules that apply universe-wide."""
+    if output.canon_jobber_prevention_rules:
+        if "canon_character_integrity" not in content:
+            content["canon_character_integrity"] = {}
+        content["canon_character_integrity"]["jobber_prevention_rules"] = output.canon_jobber_prevention_rules
+        results["updates_applied"].append("canon_character_integrity.jobber_prevention_rules")
 
 
 def _apply_knowledge_secrets_and_limits(content: Dict, output: LoreKeeperOutput, results: Dict) -> None:
