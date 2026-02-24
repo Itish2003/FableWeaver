@@ -41,8 +41,8 @@ async def plan_research_queries(
     client = ResilientClient(api_key=get_api_key())
 
     # Combine all user input for analysis
-    full_context = f"""
-UNIVERSES: {', '.join(universes)}
+    universes_str = ', '.join(universes)
+    full_context = f"""UNIVERSES: {universes_str}
 
 TIMELINE DEVIATION / OC DESCRIPTION:
 {deviation}
@@ -51,11 +51,11 @@ USER INPUT / ADDITIONAL CONTEXT:
 {user_input}
 """.strip()
 
-    prompt = f"""You are a Research Query Planner for an interactive fiction engine.
+    prompt = """You are a Research Query Planner for an interactive fiction engine.
 
 Analyze the following story setup and generate a comprehensive list of research topics.
 
-{full_context}
+""" + full_context + """
 
 ═══════════════════════════════════════════════════════════════════════════════
                               YOUR TASK
