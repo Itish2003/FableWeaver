@@ -66,7 +66,45 @@
     "knowledge": []
   },
   "power_origins": {
-    "sources": [],
+    "sources": [
+      {
+        "name": "Cursed Spirit Manipulation",
+        "canonical_techniques": [
+          "Exorcise - Eliminate cursed spirits permanently",
+          "Absorb - Take cursed spirits into himself",
+          "Store - Keep cursed spirits in reserve",
+          "Command - Control absorbed spirits"
+        ],
+        "combat_style": "Information-based control using Psion/Pushion manipulation",
+        "signature_moves": [
+          "Spirit Absorption",
+          "Cursed Spirit Command",
+          "Eidos Rewriting through spirit control"
+        ],
+        "weaknesses": [
+          "Spirits without information vulnerability",
+          "Massive spirit numbers"
+        ]
+      },
+      {
+        "name": "Ten Shadows Technique (Jujutsu Kaisen)",
+        "canonical_techniques": [
+          "Shadow Shackling - Bind with shadows",
+          "Nue - Winged shadow familiar",
+          "Mahoraga - Divine dog beast (adaptation mechanism)"
+        ],
+        "combat_style": "Shadow manipulation and summoning of ten celestial beasts",
+        "signature_moves": [
+          "Shadow Shackling",
+          "Mahoraga Manifestation",
+          "Adaptive Shadow Summoning"
+        ],
+        "weaknesses": [
+          "Limited shadow availability",
+          "Mahoraga adaptation limits"
+        ]
+      }
+    ],
     "power_interactions": [],
     "theoretical_evolutions": [],
     "usage_tracking": {
@@ -221,20 +259,173 @@
     }
   },
   "world_state": {
-    "characters": {},
-    "factions": {},
+    "characters": {
+      "Kudou Kageaki": {
+        "role": "Protagonist - Strategic-Class Magician",
+        "universe": "The Irregular at Magic High School (Primary)",
+        "disposition": "Protagonist",
+        "status": "Year 1 student at First High School, fully operational",
+        "powers": [
+          "Cursed Spirit Manipulation",
+          "Ten Shadows Technique",
+          "Psion/Pushion Control"
+        ]
+      },
+      "Kudou Retsu": {
+        "role": "Family patriarch and grandfather",
+        "universe": "The Irregular at Magic High School",
+        "disposition": "Allied",
+        "relationship_to_protagonist": "Family elder, pragmatist",
+        "status": "Active head of Kudou Family"
+      },
+      "Kudou Makoto": {
+        "role": "Father of Kageaki",
+        "universe": "The Irregular at Magic High School",
+        "disposition": "Family (strained)",
+        "relationship_to_protagonist": "Father - intimidated by Kageaki's power",
+        "status": "Active family member"
+      },
+      "Kudou Minoru": {
+        "role": "Younger brother",
+        "universe": "The Irregular at Magic High School",
+        "disposition": "Allied",
+        "relationship_to_protagonist": "Protective but distant",
+        "status": "Following original story path"
+      },
+      "Tatsuya Shiba": {
+        "role": "Strategic-Class Magician (Canon character)",
+        "universe": "The Irregular at Magic High School",
+        "disposition": "Rival/Ally",
+        "relationship_to_protagonist": "Observed by Kageaki as an anomaly",
+        "powers": [
+          "Decomposition Magic",
+          "Material Conversion"
+        ]
+      },
+      "Miyuki Shiba": {
+        "role": "Bloom student, Tatsuya's sister",
+        "universe": "The Irregular at Magic High School",
+        "disposition": "Rival/Peer",
+        "relationship_to_protagonist": "School peer",
+        "status": "Year 1 student at First High"
+      }
+    },
+    "factions": {
+      "Kudou Family": {
+        "type": "Magical Clan",
+        "description": "One of the Ten Great Families of Japan, specialized in mental interference magic",
+        "hierarchy": [
+          "Kudou Retsu (Patriarch)",
+          "Kudou Makoto (Current head)",
+          "Kageaki (Heir)"
+        ],
+        "disposition_to_protagonist": "Allied (Family)",
+        "territories": [
+          "Kudou compounds in Tokyo",
+          "Ninth Institute (secret research facility)"
+        ],
+        "specialty": "Mental interference, Psion-based magic, spirit manipulation"
+      },
+      "Yotsuba Clan": {
+        "type": "Magical Clan",
+        "description": "One of the Ten Great Families, powerful and enigmatic",
+        "hierarchy": [
+          "Unknown leadership structure"
+        ],
+        "disposition_to_protagonist": "Potentially Rival",
+        "territories": [
+          "Tokyo area"
+        ],
+        "specialty": "High-level magic, strategic operations"
+      },
+      "First High School": {
+        "type": "Educational Institution",
+        "description": "Premier magical high school in Tokyo",
+        "hierarchy": [
+          "Principal",
+          "Faculty",
+          "Bloom Class (elite)",
+          "Weed Class (others)"
+        ],
+        "disposition_to_protagonist": "Neutral",
+        "territories": [
+          "School campus in Tokyo"
+        ],
+        "specialty": "Magical education, Bloom/Weed system"
+      }
+    },
     "locations": {
       "Ninth Institute": {
         "atmosphere": "Sterile, high-pressure, subterranean",
         "controlled_by": "Kudou Family",
-        "current_state": "Functional/Active"
+        "current_state": "Functional/Active",
+        "key_features": [
+          "Underground research facility",
+          "Spirit containment",
+          "Magic laboratories"
+        ],
+        "story_hooks": [
+          "Secret family operations base",
+          "Kageaki's training ground"
+        ]
       },
       "Yokohama Exclusion Zone": {
         "atmosphere": "Haunted, saturated with residual Pushions and Psion fallout",
         "current_state": "Restricted ruins",
         "key_features": [
           "Destroyed dry docks",
-          "Ghostly echoes of the GAA fleet"
+          "Ghostly echoes of GAA fleet",
+          "Pushion saturation"
+        ],
+        "story_hooks": [
+          "Scorched Halloween aftermath",
+          "Source of vengeful spirits",
+          "Kageaki's harvesting grounds"
+        ]
+      },
+      "First High School": {
+        "atmosphere": "Modern magical academy, Bloom vs Weed hierarchy",
+        "controlled_by": "Government/Institutional",
+        "current_state": "Active",
+        "key_features": [
+          "Bloom and Weed class divisions",
+          "Magical training grounds",
+          "Student dorms"
+        ],
+        "story_hooks": [
+          "Kageaki's enrollment point",
+          "Meeting point for Shiba siblings",
+          "Power dynamics"
+        ]
+      },
+      "Kudou Family Compounds": {
+        "atmosphere": "Formal, protected, hierarchical",
+        "controlled_by": "Kudou Family",
+        "current_state": "Active",
+        "key_features": [
+          "Family estate",
+          "Training facilities",
+          "Libraries"
+        ],
+        "story_hooks": [
+          "Family politics",
+          "Power training",
+          "Strategic planning"
+        ]
+      },
+      "Tokyo Metropolitan Area": {
+        "atmosphere": "Urban magical society",
+        "controlled_by": "Multiple factions",
+        "current_state": "Active",
+        "key_features": [
+          "Magical infrastructure",
+          "Ten Great Families presence",
+          "Schools"
+        ],
+        "story_hooks": [
+          "Political hub",
+          "Multiple faction operations",
+          "Story epicenter"
         ]
       }
     },
@@ -738,11 +929,21 @@
       "personality": "Serious and professional in duty; socially awkward and flustered in civilian life. USNA Commander."
     },
     "Tatsuya Shiba": {
-      "dialogue_examples": [
-        "As long as it doesn't threaten Miyuki, I have no interest.",
-        "I will decompose anything that stands in our way.",
-        "I don't have feelings like others do. The only thing I have left is my love for my sister."
-      ]
+      "speech_patterns": [
+        "Formal",
+        "Analytical",
+        "Occasionally sarcastic"
+      ],
+      "vocabulary_level": "Academic/Technical",
+      "verbal_tics": [
+        "Logical explanations",
+        "Minimal emotional expression"
+      ],
+      "emotional_tells": [
+        "Eyes harden when using magic",
+        "Cold precision in crisis"
+      ],
+      "example_dialogue": "Magic theory dictates the following approach..."
     },
     "Suguru_Geto": {
       "speech_patterns": [
@@ -758,6 +959,40 @@
     },
     "Shiba_Tatsuya": {
       "vocabulary_level": "High/Technical"
+    },
+    "Miyuki Shiba": {
+      "speech_patterns": [
+        "Polite",
+        "Formal",
+        "Occasionally teasing"
+      ],
+      "vocabulary_level": "Academic",
+      "verbal_tics": [
+        "Honorifics usage",
+        "Elegant phrasing"
+      ],
+      "emotional_tells": [
+        "Smiles when pleased with Tatsuya",
+        "Formal distance with others"
+      ],
+      "example_dialogue": "Onii-sama's approach is, as always, most efficient."
+    },
+    "Kudou Retsu": {
+      "speech_patterns": [
+        "Authoritative",
+        "Pragmatic",
+        "Direct"
+      ],
+      "vocabulary_level": "Strategic/Political",
+      "verbal_tics": [
+        "Decisive commands",
+        "Power-focused language"
+      ],
+      "emotional_tells": [
+        "Respect when discussing Kageaki's power",
+        "Cold calculation otherwise"
+      ],
+      "example_dialogue": "Power is the only language that matters."
     }
   },
   "knowledge_boundaries": {
@@ -826,7 +1061,74 @@
     "jobber_prevention_rules": []
   },
   "canon_timeline": {
-    "events": [],
+    "events": [
+      {
+        "date": "March 20, 2095",
+        "event": "Scorched Halloween (Yokohama Disturbance)",
+        "characters_involved": [
+          "Tatsuya Shiba",
+          "Kageaki (observer)",
+          "GAA Fleet"
+        ],
+        "consequences": [
+          "Material Burst event",
+          "Exclusion Zone created",
+          "Spiritual contamination"
+        ],
+        "importance": "Critical",
+        "status": "Completed",
+        "source": "Canon"
+      },
+      {
+        "date": "March 21, 2095",
+        "event": "Shiba Siblings Enrollment at First High",
+        "characters_involved": [
+          "Tatsuya Shiba",
+          "Miyuki Shiba",
+          "Kageaki"
+        ],
+        "consequences": [
+          "Shift in school power dynamics",
+          "OC convergence point"
+        ],
+        "importance": "Critical",
+        "status": "Completed",
+        "source": "Canon"
+      },
+      {
+        "date": "March 21, 2095",
+        "event": "Kageaki's Enrollment at First High",
+        "characters_involved": [
+          "Kageaki",
+          "School administration",
+          "Kudou Family"
+        ],
+        "consequences": [
+          "Strategic Class student presence",
+          "Power hierarchy disruption"
+        ],
+        "importance": "Critical",
+        "status": "Active",
+        "source": "Divergence"
+      },
+      {
+        "date": "Early April 2095",
+        "event": "Nine Schools Tournament Arc (Expected)",
+        "characters_involved": [
+          "First High students",
+          "School rivals",
+          "Kageaki"
+        ],
+        "consequences": [
+          "School competition",
+          "Power showcase",
+          "Relationship building"
+        ],
+        "importance": "High",
+        "status": "Pending",
+        "source": "Canon trajectory"
+      }
+    ],
     "current_position": "March 21, 2095 - Scorched Halloween (Yokohama Disturbance fallout), Enrollment of the Shiba siblings at First High",
     "notes": ""
   },
