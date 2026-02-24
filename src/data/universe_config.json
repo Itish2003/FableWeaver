@@ -1,0 +1,77 @@
+{
+  "_comment": "Universe-specific configuration for FableWeaver. Add new universes here without code changes.",
+  "universes": {
+    "jjk": {
+      "display_names": ["Jujutsu Kaisen", "JJK"],
+      "wiki_url": "site:jujutsu-kaisen.fandom.com",
+      "leakage_terms": [
+        "cursed technique",
+        "cursed energy",
+        "jujutsu",
+        "domain expansion",
+        "binding vow"
+      ]
+    },
+    "worm": {
+      "display_names": ["Worm", "Wormverse", "Parahumans"],
+      "wiki_url": "site:worm.fandom.com",
+      "leakage_terms": [
+        "shard",
+        "trigger event",
+        "parahuman",
+        "cape"
+      ]
+    },
+    "naruto": {
+      "display_names": ["Naruto"],
+      "wiki_url": "site:naruto.fandom.com",
+      "leakage_terms": [
+        "chakra",
+        "jutsu",
+        "kekkei genkai",
+        "biju"
+      ]
+    },
+    "cultivation": {
+      "display_names": ["Cultivation", "Xianxia", "Wuxia"],
+      "wiki_url": null,
+      "leakage_terms": [
+        "qi",
+        "qi cultivation",
+        "cultivation stage",
+        "realm",
+        "dantian"
+      ]
+    },
+    "dxd": {
+      "display_names": ["DxD", "High School DxD"],
+      "wiki_url": "site:highschooldxd.fandom.com",
+      "leakage_terms": []
+    },
+    "fate": {
+      "display_names": ["Fate", "Nasuverse"],
+      "wiki_url": "site:typemoon.fandom.com",
+      "leakage_terms": []
+    },
+    "lotm": {
+      "display_names": ["Lord of the Mysteries", "LOTM"],
+      "wiki_url": "site:lordofthemysteries.fandom.com",
+      "leakage_terms": []
+    },
+    "one_piece": {
+      "display_names": ["One Piece"],
+      "wiki_url": "site:onepiece.fandom.com",
+      "leakage_terms": []
+    },
+    "marvel": {
+      "display_names": ["Marvel"],
+      "wiki_url": "site:marvel.fandom.com",
+      "leakage_terms": []
+    },
+    "dc": {
+      "display_names": ["DC"],
+      "wiki_url": "site:dc.fandom.com",
+      "leakage_terms": []
+    }
+  }
+}

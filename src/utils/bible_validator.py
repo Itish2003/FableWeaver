@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional
 import logging
 import copy
 
+from src.utils.universe_config import get_all_leakage_terms
+
 logger = logging.getLogger(__name__)
 
 
@@ -436,13 +438,9 @@ def check_power_origin_context_leakage(power_origin: dict, universe: Optional[st
     """
     warnings = []
 
-    # Terms associated with specific universes - these should only be in source_universe_context
-    universe_specific_terms = {
-        "jjk": ["cursed technique", "cursed energy", "jujutsu", "domain expansion", "binding vow"],
-        "worm": ["shard", "trigger event", "parahuman", "cape"],
-        "naruto": ["chakra", "jutsu", "kekkei genkai", "biju"],
-        "cultivation": ["qi", "qi cultivation", "cultivation stage", "realm", "dantian"],
-    }
+    # Terms associated with specific universes - loaded from src/data/universe_config.json
+    # so new universes can be added without changing this file.
+    universe_specific_terms = get_all_leakage_terms()
 
     # Fields to check in power_origin
     fields_to_check = [

@@ -15,6 +15,7 @@ from src.utils.resilient_gemini import ResilientGemini
 from src.tools.core_tools import BibleTools
 from src.config import get_settings
 from src.callbacks import make_timing_callbacks, tool_error_fallback
+from src.utils.universe_config import get_wiki_hint, get_universe_config
 
 logger = logging.getLogger("fable.research")
 
@@ -152,22 +153,9 @@ def _generate_default_topics(universes: List[str]) -> List[Dict[str, str]]:
     """Fallback topic generation if the LLM call fails."""
     topics = []
 
-    OFFICIAL_WIKI_HINTS = {
-        "Wormverse": "site:worm.fandom.com",
-        "Worm": "site:worm.fandom.com",
-        "DxD": "site:highschooldxd.fandom.com",
-        "Fate": "site:typemoon.fandom.com",
-        "Naruto": "site:naruto.fandom.com",
-        "Lord of the Mysteries": "site:lordofthemysteries.fandom.com",
-        "LOTM": "site:lordofthemysteries.fandom.com",
-    }
-
     for universe in universes:
-        wiki_hint = ""
-        for key, hint in OFFICIAL_WIKI_HINTS.items():
-            if key.lower() in universe.lower():
-                wiki_hint = f" {hint}"
-                break
+        hint = get_wiki_hint(universe)
+        wiki_hint = f" {hint}" if hint else ""
 
         topics.extend([
             {"query": f'"{universe}" official wiki timeline chronology major events{wiki_hint}',
@@ -185,6 +173,22 @@ def _generate_default_topics(universes: List[str]) -> List[Dict[str, str]]:
         ])
 
     return topics
+
+
+def _build_wiki_hints_section() -> str:
+    """
+    Build a markdown list of wiki hints from universe_config.json for use
+    inside LLM prompts.  Universes without a wiki_url are skipped.
+    """
+    universes = get_universe_config().get("universes", {})
+    lines = []
+    for cfg in universes.values():
+        url = cfg.get("wiki_url")
+        if not url:
+            continue
+        display = " / ".join(cfg.get("display_names", []))
+        lines.append(f"- {display}: {url}")
+    return "\n".join(lines) if lines else "(no wiki hints configured)"
 
 
 async def plan_midstream_queries(
@@ -253,15 +257,7 @@ User query: "Dragon's relationship with the Birdcage"
 ═══════════════════════════════════════════════════════════════════════════════
 
 Use these site hints for known wikis:
-- Wormverse/Parahumans: site:worm.fandom.com
-- Lord of the Mysteries: site:lordofthemysteries.fandom.com
-- Fate/Nasuverse: site:typemoon.fandom.com
-- Jujutsu Kaisen: site:jujutsu-kaisen.fandom.com
-- High School DxD: site:highschooldxd.fandom.com
-- Naruto: site:naruto.fandom.com
-- One Piece: site:onepiece.fandom.com
-- Marvel: site:marvel.fandom.com
-- DC: site:dc.fandom.com
+{_build_wiki_hints_section()}
 
 ═══════════════════════════════════════════════════════════════════════════════
                               OUTPUT FORMAT
@@ -368,32 +364,13 @@ def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[
     agents = []
     research_topics = []
 
-    # Define official wiki mappings for common universes
-    OFFICIAL_WIKI_HINTS = {
-        "DxD": "site:highschooldxd.fandom.com",
-        "High School DxD": "site:highschooldxd.fandom.com",
-        "Fate": "site:typemoon.fandom.com",
-        "Nasuverse": "site:typemoon.fandom.com",
-        "Worm": "site:worm.fandom.com",
-        "Parahumans": "site:worm.fandom.com",
-        "Marvel": "site:marvel.fandom.com",
-        "DC": "site:dc.fandom.com",
-        "Naruto": "site:naruto.fandom.com",
-        "One Piece": "site:onepiece.fandom.com",
-        "Jujutsu Kaisen": "site:jujutsu-kaisen.fandom.com",
-        "JJK": "site:jujutsu-kaisen.fandom.com",
-    }
-
     if specific_topics:
         research_topics = specific_topics
     elif universes:
         for universe in universes:
-            # Get wiki hint if available
-            wiki_hint = ""
-            for key, hint in OFFICIAL_WIKI_HINTS.items():
-                if key.lower() in universe.lower():
-                    wiki_hint = f" {hint}"
-                    break
+            # Get wiki hint from config (src/data/universe_config.json)
+            hint = get_wiki_hint(universe)
+            wiki_hint = f" {hint}" if hint else ""
 
             # More specific, targeted search queries
             research_topics.append({

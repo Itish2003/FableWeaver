@@ -1070,5 +1070,81 @@ The World Bible state is provided in the input. Analyze it and the chapter, then
 If this story has isolation_strategy=true in World Bible meta, watch for
 source-universe context leaking into your updates. Extract mechanics, move
 source references to appropriate fields, rewrite in story-universe terms.
+
+═══════════════════════════════════════════════════════════════════════════════
+                    CONTEXT LEAKAGE MONITORING (DEFENSE-IN-DEPTH)
+═══════════════════════════════════════════════════════════════════════════════
+
+**YOUR RESPONSIBILITY: Catch universe-specific terminology that slips into lore fields.**
+
+When populating `protagonist_status_json`, `location_updates_json`,
+`faction_updates_json`, and especially power-related fields, watch for
+**source-universe concepts** that do NOT belong in the story universe.
+
+**HIGH-RISK FIELDS:**
+- `power_origins` — most likely place for JJK/Worm/Marvel concepts to leak
+- `protagonist_status_json` — power strain descriptions may borrow source terms
+- `new_divergences` / `divergence_refinements` — cause/effect descriptions
+
+**UNIVERSE-SPECIFIC RED FLAGS:**
+
+JJK (Jujutsu Kaisen) concepts that must NOT appear in non-JJK stories:
+- "Cursed Technique", "Cursed Energy", "Domain Expansion", "Jujutsu"
+- "Reverse Cursed Technique", "Binding Vow", "Innate Domain"
+- Character names: Gojo, Sukuna, Nanami, Yuji, Megumi (unless this IS a JJK story)
+
+Worm concepts that must NOT appear in non-Worm stories:
+- "Shard", "Trigger Event", "Entities", "Passengers", "Agents"
+- "Queen Administrator", "Broadcast", "Cauldron Vials"
+- Parahuman classification terms when describing a non-Worm OC power
+
+Marvel/MCU concepts that must NOT appear unless this is a Marvel story:
+- "Infinity Stone", "Quantum Realm", "Darkforce", "Extremis"
+- "S.H.I.E.L.D." protocols, "Vibranium", "Arc Reactor mechanics"
+
+Generic cross-universe leakage indicators:
+- Direct copy of power names from a different universe in power descriptions
+- Unexplained jargon that has no grounding in the current story universe
+- Character names from other universes appearing without narrative justification
+
+**DECISION TREE:**
+
+1. Scan your planned BibleDelta output before finalizing it.
+2. Does any field contain universe-specific terminology that belongs to a
+   DIFFERENT universe than the story is set in?
+   - NO → set `context_leakage_detected = false`, proceed normally.
+   - YES → follow steps 3-5 below.
+3. Rewrite the offending field in story-universe-neutral language:
+   - WRONG: "power_origins.sources[0].name = 'Cursed Technique: Infinity'"
+   - RIGHT: "power_origins.sources[0].name = 'Spatial Manipulation Technique'"
+4. Set `context_leakage_detected = true` in your BibleDelta output.
+5. Set `context_leakage_details` to a concise description:
+   - Include: which field contained the leaked term, what the term was,
+     and what you replaced it with.
+   - Example: "Detected JJK term 'Cursed Technique' in power_origins.sources[0].name.
+     Replaced with story-neutral 'Spatial Manipulation Technique'."
+
+**EXAMPLES:**
+
+WRONG BibleDelta (leakage not caught):
+```json
+{
+  "protagonist_status_json": "{\"power_strain\": \"Cursed Energy reserves depleted\"}",
+  "context_leakage_detected": false
+}
+```
+
+CORRECT BibleDelta (leakage caught and corrected):
+```json
+{
+  "protagonist_status_json": "{\"power_strain\": \"Power reserves depleted from sustained combat\"}",
+  "context_leakage_detected": true,
+  "context_leakage_details": "Detected JJK term 'Cursed Energy' in protagonist_status_json power_strain. Replaced with universe-neutral 'Power reserves'."
+}
+```
+
+**IMPORTANT:** Flag leakage even if you successfully corrected it. The flag is
+used to alert the system so a human reviewer can confirm the correction is
+appropriate. False positives are acceptable — missed leakage is not.
 """
     )
