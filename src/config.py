@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     key_cooldown_seconds: int = 60
 
     # Storyteller chapter length guidance
-    chapter_min_words: int = 6000
+    chapter_min_words: int = 4000
     chapter_max_words: int = 8000
 
     # Max output tokens for the Storyteller LLM call (Gemini 2.5 Flash supports up to 65536).
