@@ -28,7 +28,8 @@ export function useFableEngine() {
   
   const [currentText, setCurrentText] = useState('');
   const [questions, setQuestions] = useState(null);  // Optional clarifying questions from AI
-  
+  const [systemMessages, setSystemMessages] = useState([]);  // System log (research, enrich, etc.)
+
   const ws = useRef(null);
   const bufferRef = useRef('');
   
@@ -151,29 +152,35 @@ export function useFableEngine() {
           setStatus('processing');
           setCurrentText('');
           bufferRef.current = '';
-          setQuestions(null);  // Clear questions when starting new turn
+          setQuestions(null);
+          setSystemMessages([]);  // Clear system log on new turn
         }
         break;
       case 'content_delta':
-        bufferRef.current += data.text;
-        // Check for start of JSON block (summary or choices) to hide it from UI
-        const jsonStart = bufferRef.current.search(/\{(?:[\s\n]*"summary"|[\s\n]*"choices")/);
-        if (jsonStart !== -1) {
-            setCurrentText(bufferRef.current.substring(0, jsonStart).trim());
+        // Route system messages to separate log, narrative to buffer
+        if (data.sender === 'system') {
+          const text = (data.text || '').replace(/\n+$/, '');
+          if (text.trim()) {
+            setSystemMessages(prev => [...prev, text]);
+          }
         } else {
-            setCurrentText(bufferRef.current);
+          bufferRef.current += data.text;
+          const jsonStart = bufferRef.current.search(/\{(?:[\s\n]*"summary"|[\s\n]*"choices")/);
+          if (jsonStart !== -1) {
+              setCurrentText(bufferRef.current.substring(0, jsonStart).trim());
+          } else {
+              setCurrentText(bufferRef.current);
+          }
         }
         break;
       case 'turn_complete':
         setStatus('connected');
         processTurnComplete();
-        // Store optional questions for user to answer
         if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
           setQuestions(data.questions);
         } else {
           setQuestions(null);
         }
-        // Refresh World Bible after turn (Archivist may have updated it)
         if (activeGameIdRef.current) {
           fetchWorldBible(activeGameIdRef.current);
         }
@@ -181,7 +188,6 @@ export function useFableEngine() {
       case 'error':
         setError(data.message);
         setStatus('error');
-        // Don't modify history on error
         break;
     }
   };
@@ -455,7 +461,8 @@ export function useFableEngine() {
     history,
     currentText,
     choices,
-    questions,  // Optional clarifying questions from AI
+    questions,
+    systemMessages,  // System log (research progress, enrich results, etc.)
     worldBible,
     bibleLoading,
     createNewGame,

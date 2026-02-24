@@ -61,7 +61,7 @@ const stripJsonMetadata = (text) => {
 const API_BASE = 'http://localhost:8000';
 
 export default function StoryView({ engine }) {
-  const { history = [], currentText, choices, questions, status, sendChoice, sendResearch, sendCommand, deleteChapter, worldBible, bibleLoading, activeGameId, refreshBible, setQuestionAnswer, branches = [], branchInfo, createBranch, switchToBranch, goToParent } = engine || {};
+  const { history = [], currentText, choices, questions, systemMessages = [], status, sendChoice, sendResearch, sendCommand, deleteChapter, worldBible, bibleLoading, activeGameId, refreshBible, setQuestionAnswer, branches = [], branchInfo, createBranch, switchToBranch, goToParent } = engine || {};
   const contentRef = useRef(null);
   const chapterRefs = useRef({});
   const [inputVal, setInputVal] = useState('');
@@ -604,6 +604,43 @@ export default function StoryView({ engine }) {
             )}
           </div>
         </div>
+
+        {/* System Log Panel — research/enrich/command feedback */}
+        <AnimatePresence>
+          {systemMessages.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="border-t border-cyan-500/20 bg-[#080a10]/95 backdrop-blur-md shrink-0 overflow-hidden"
+            >
+              <div className="px-4 py-2 max-h-48 overflow-y-auto" ref={el => { if (el) el.scrollTop = el.scrollHeight; }}>
+                <div className="max-w-3xl mx-auto">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-[10px] uppercase tracking-widest text-cyan-400/70 font-bold">System Log</span>
+                    {isProcessing && <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />}
+                  </div>
+                  <div className="space-y-0.5 font-mono text-xs">
+                    {systemMessages.map((msg, i) => (
+                      <div key={i} className="text-gray-400 leading-relaxed">
+                        {msg.split('\n').map((line, j) => (
+                          <div key={j} className={
+                            line.includes('✓') ? 'text-emerald-400/80' :
+                            line.includes('✗') || line.includes('Failed') ? 'text-red-400/80' :
+                            line.includes('→') || line.includes('Researching') ? 'text-cyan-300/70' :
+                            line.includes('Found') || line.includes('gaps') ? 'text-amber-300/70' :
+                            'text-gray-500'
+                          }>{line}</div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input Area - Sticky Bottom */}
         <div className="p-4 bg-[#0a0a0c]/90 border-t border-white/10 z-10 shrink-0 backdrop-blur-lg">
