@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # ReflectAndRetryToolPlugin retry count for tool failures
     tool_retry_max_attempts: int = 3
 
+    # Bible schema validation mode for update_bible()
+    # "warn": log warning but do not block write (safe for production)
+    # "error": log error but do not block write (for monitoring)
+    # "strict": raise ValidationError and block write (for CI/testing only)
+    bible_schema_validation_mode: str = "warn"
+
     @property
     def database_url_sync(self) -> str:
         """Convert async DB URL to sync for ADK's DatabaseSessionService."""
