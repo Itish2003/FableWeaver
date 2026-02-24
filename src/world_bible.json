@@ -78,6 +78,23 @@
         "last_chapter": 1,
         "strain_level": "medium"
       }
+    },
+    "combat_style": "Varies by system: Chakra uses elemental/physical/mental manipulation; Nen uses life energy (Aura) via six types; Cursed Energy uses negative emotions; Haki uses willpower; Breathing Styles use oxygen intake for physical buffs.",
+    "Yuji_Itadori": {
+      "signature_moves": [
+        "Divergent Fist",
+        "Black Flash",
+        "Soul Strike"
+      ]
+    },
+    "Satoru_Gojo": {
+      "signature_moves": [
+        "Infinity",
+        "Cursed Technique Lapse: Blue",
+        "Cursed Technique Reversal: Red",
+        "Hollow Purple",
+        "Domain Expansion: Infinite Void"
+      ]
     }
   },
   "world_state": {
@@ -100,7 +117,59 @@
     },
     "territory_map": {},
     "magic_system": {},
-    "entity_aliases": {}
+    "entity_aliases": {},
+    "knowledge_base": {
+      "factions": {
+        "ten_master_clans": {
+          "type": "Governing Aristocratic Body / Eugenics-based Elite",
+          "hierarchy": [
+            "Ten Master Clans Selection Conference (meets every 4 years)",
+            "The Twenty-Eight Families (eligible pool)",
+            "18 Assistant Houses (support and potential replacements)",
+            "Clan Heads (patriarchs/matriarchs)"
+          ],
+          "notes": "The Magic Association is the official governing body, but the Clans exert absolute control over policy.",
+          "description": "The top ten magic families in Japan, serving as the unofficial governing body of the Japanese magic community. Born from Ten Magician Research and Development Institutes created for WWII. Surnames correspond to the institute number (e.g., Ichijou = 1, Yotsuba = 4)."
+        },
+        "star_religious_group": {
+          "hierarchy": [
+            "Representative (Public face/resource manager, e.g., Shigeru Sonoda)",
+            "Children of the Star (General congregation)",
+            "External Contractors (Hired assassins/mercenaries like Toji Fushiguro)"
+          ],
+          "type": "Religious Cult / Non-Sorcerer Organization",
+          "description": "Also known as the Time Vessel Association. An organization of non-sorcerers worshipping Master Tengen as a deity ('The Star'). Opposed to the merger with Star Plasma Vessels as a 'defilement'."
+        },
+        "jujutsu_high_tokyo": {
+          "hierarchy": [
+            "The Higher-ups (Council of conservative elders who dictate laws)",
+            "Principal (Chief administrator, e.g., Masamichi Yaga)",
+            "Teachers/Managers (Sorcerers handling training and logistics)",
+            "Students (Ranked Grade 4 to Special Grade)"
+          ],
+          "type": "Educational Institution / Administrative Headquarters",
+          "description": "One of two schools in Japan (alongside Kyoto) training jujutsu sorcerers. Serves as administrative HQ for the jujutsu world, responsible for sorcerer dispatch and managing cursed objects."
+        }
+      },
+      "mahouka_locations": {
+        "kudou_estate": {
+          "description": "Luxurious residence of the Kudou family. Strategically located to monitor and suppress foreign magician operatives in Osaka.",
+          "name": "Kudou Main House",
+          "type": "Key Building / Clan Estate",
+          "location": "Ikoma, Nara (Foothills of Mt. Higashiyama)"
+        }
+      },
+      "jjk_locations": {
+        "culling_game_colonies": {
+          "colonies": [
+            "Tokyo No. 1 (Central Tokyo)",
+            "Sendai (Miyagi)",
+            "Sakurajima Colony (Kagoshima)"
+          ],
+          "description": "Temporary territories established by Kenjaku for the Culling Game."
+        }
+      }
+    }
   },
   "character_voices": {
     "Kudou Kageaki": {
@@ -109,6 +178,53 @@
       "verbal_tics": "Minimal; uses silence as a tool of pressure.",
       "emotional_tells": "Eyes turn cold/still when activating high-level Pushion manipulation.",
       "example_dialogue": "Spirits are merely external sub-processors for my will. To overwrite their Eidos is simpler than editing a sequence on a CAD."
+    },
+    "Naruto Uzumaki": {
+      "verbal_tics": [
+        "-ttebayo (Dattebayo) / \"Believe it!\" / \"You know!\"",
+        "-ttebane (surfaces when excited or angry)",
+        "Rubs the back of his head when nervous",
+        "Grins widely when praised"
+      ]
+    },
+    "Monkey D": {
+      " Luffy": {
+        "personality": "Boyish exuberance and steely resolve; famously straightforward and instinctively reads character."
+      }
+    },
+    "Sherlock Holmes": {
+      "personality": "Pompous, vain, and emotionally detached; treats his mind as a clinical instrument.",
+      "dialogue_examples": [
+        "Elementary.",
+        "When you have eliminated the impossible, whatever remains, however improbable, must be the truth."
+      ],
+      "speech_patterns": [
+        "Clinical precision",
+        "Replete with literary and biblical references",
+        "Delivers deductive monologues regardless of audience comprehension"
+      ]
+    },
+    "Katsuki Bakugo": {
+      "vocabulary_level": "Crude/Informal"
+    },
+    "Hermione Granger": {
+      "topics_they_avoid": [
+        "Personal failure",
+        "Emotional inadequacy"
+      ]
+    },
+    "Satoru_Gojo": {
+      "speech_patterns": [
+        "Informal and casual even in high-stakes battles",
+        "Uses absolute terminology regarding jujutsu principles",
+        "Mocking towards enemies he deems weak"
+      ]
+    },
+    "Tatsuya_Shiba": {
+      "personality": "Stoic, analytical, and seemingly cold. He is incapable of feeling strong emotions except for familial love toward his sister due to experimental surgery."
+    },
+    "Sukuna": {
+      "personality": "Purely hedonistic, cruel, and self-serving. Lives for his own pleasure and respects only absolute strength."
     }
   },
   "knowledge_boundaries": {

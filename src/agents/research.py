@@ -1220,8 +1220,7 @@ If the research is about powers, abilities, or combat - YOU MUST call:
 - `update_bible("power_origins.signature_moves", [...])` - Key techniques
 - `update_bible("power_origins.canon_scene_examples", [...])` - Specific fight scenes
 
-After updates, output a brief summary of what you added.
-{metadata_section}""",
+After updates, output a brief summary of what you added.""",
         tools=[bible.update_bible, bible.read_bible],
         name="midstream_lore_keeper"
     )
