@@ -348,18 +348,25 @@ def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[
     """
     Creates a swarm of researchers with enhanced canonical accuracy.
 
-    NOTE ON CONCURRENT EXECUTION (Issue #20):
+    ISSUE #20 - FIX: Per-Agent API Key Binding & Output Isolation
+    ═════════════════════════════════════════════════════════════════
+
     Multiple Lore Hunter agents execute in parallel (ParallelAgent).
-    Each agent creates independent tools (BibleTools, MetaTools) with their own
-    AsyncSessionLocal() database connections, providing natural database-level isolation.
+    PROBLEM (before fix):
+    - All agents called get_api_key() at runtime → same key for all (rotation broken)
+    - Parallel execution meant last key set in environ won the race
 
-    Risk of concurrent Bible updates is mitigated by:
-    1. Optimistic concurrency control in BibleTools.update_bible() (version_number field)
-    2. Lore Hunters produce INDEPENDENT research outputs (not concurrent Bible updates)
-    3. Lore Keeper (subsequent sequential agent) synthesizes all research into Bible
+    FIX (implemented):
+    1. Get unique API key for EACH agent at construction time (before parallel execution)
+    2. Pass api_key directly to ResilientGemini (no environ manipulation)
+    3. Each agent's ResilientClient uses its bound key exclusively
+    4. Parallel execution now uses different API keys, enabling proper rotation
 
-    Future optimization: Could implement per-agent ADK session namespacing for even
-    stronger isolation if ADK's DatabaseSessionService supports sub-sessions.
+    ISOLATION:
+    1. Each agent has its own independent research output (text)
+    2. Database isolation via separate AsyncSessionLocal() connections
+    3. BibleTools only called by Lore Keeper (sequential after swarm)
+    4. OCC protects against any concurrent Bible writes
     """
     agents = []
     research_topics = []
@@ -409,7 +416,7 @@ def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[
 
     logger.debug("Creating Lore Hunter Swarm for %d topics", len(research_topics))
 
-    for topic_data in research_topics:
+    for idx, topic_data in enumerate(research_topics):
         # Handle both old format (string) and new format (dict)
         if isinstance(topic_data, str):
             topic = topic_data
@@ -422,11 +429,16 @@ def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[
 
         settings = get_settings()
 
+        # FIX #20: Get UNIQUE API key for this agent at construction time
+        # This prevents the "last key wins" race condition in parallel execution
+        agent_api_key = get_api_key()
+
         agent_name = f"researcher_{re.sub(r'[^a-zA-Z0-9_]', '_', focus)[:50].strip('_')}"
-        logger.debug("Initializing sub-agent: %s focused on '%s'", agent_name, focus)
+        logger.debug("Initializing sub-agent: %s focused on '%s' [api_key: %s...]",
+                    agent_name, focus, agent_api_key[:8])
 
         agent = Agent(
-            model=ResilientGemini(model=settings.model_research),
+            model=ResilientGemini(model=settings.model_research, api_key=agent_api_key),
             instruction=f"""
 You are an EXPERT LORE RESEARCHER specializing in canonical accuracy.
 Primary Focus: '{universe}'
