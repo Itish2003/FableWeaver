@@ -18,7 +18,33 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any, Union
 
 
-class CostPaid(BaseModel):
+class GeminiCompatibleModel(BaseModel):
+    """
+    Base model that removes 'additionalProperties' from JSON schema.
+    Gemini API doesn't support this field, even when set to false.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    @classmethod
+    def model_json_schema(cls, **kwargs):
+        schema = super().model_json_schema(**kwargs)
+        # Remove additionalProperties from root and all nested schemas
+        cls._remove_additional_properties(schema)
+        return schema
+
+    @staticmethod
+    def _remove_additional_properties(schema: Dict[str, Any]) -> None:
+        """Recursively remove additionalProperties from schema tree."""
+        if isinstance(schema, dict):
+            schema.pop("additionalProperties", None)
+            for value in schema.values():
+                GeminiCompatibleModel._remove_additional_properties(value)
+        elif isinstance(schema, list):
+            for item in schema:
+                GeminiCompatibleModel._remove_additional_properties(item)
+
+
+class CostPaid(GeminiCompatibleModel):
     """Represents a cost/sacrifice the protagonist paid in a chapter.
 
     Frontend expects: {cost, severity, chapter}
@@ -35,7 +61,7 @@ class CostPaid(BaseModel):
     # Note: No extra="allow" - Gemini API doesn't support additionalProperties
 
 
-class NearMiss(BaseModel):
+class NearMiss(GeminiCompatibleModel):
     """Represents a close call or near-disaster that was avoided.
 
     Frontend expects: {what_almost_happened, saved_by, chapter}
@@ -54,7 +80,7 @@ class NearMiss(BaseModel):
 
 
 
-class PendingConsequence(BaseModel):
+class PendingConsequence(GeminiCompatibleModel):
     """Represents a future consequence that may occur due to past actions.
 
     Frontend expects: {action, predicted_consequence, due_by}
@@ -74,7 +100,7 @@ class PendingConsequence(BaseModel):
 
 
 
-class Divergence(BaseModel):
+class Divergence(GeminiCompatibleModel):
     """Represents a point where the story diverges from canon.
 
     Frontend expects: {id, chapter, what_changed, severity, status,
@@ -112,7 +138,7 @@ class Divergence(BaseModel):
 
 
 
-class ChapterDate(BaseModel):
+class ChapterDate(GeminiCompatibleModel):
     """Represents the in-story date for a chapter.
 
     Frontend expects: {chapter, date}
@@ -128,7 +154,7 @@ class ChapterDate(BaseModel):
 
 
 
-class TimelineEvent(BaseModel):
+class TimelineEvent(GeminiCompatibleModel):
     """Represents an event in the story timeline.
 
     Frontend expects: {event, date, chapter, type}
@@ -145,7 +171,7 @@ class TimelineEvent(BaseModel):
 
 
 
-class ButterflyEffect(BaseModel):
+class ButterflyEffect(GeminiCompatibleModel):
     """Represents a predicted butterfly effect from a divergence.
 
     Frontend expects: {prediction, probability, materialized, source_divergence}
@@ -168,7 +194,7 @@ class ButterflyEffect(BaseModel):
 
 
 
-class StakesTracking(BaseModel):
+class StakesTracking(GeminiCompatibleModel):
     """Container for all stakes-related data.
 
     Groups costs_paid, near_misses, pending_consequences, and power_debt.
@@ -186,7 +212,7 @@ class StakesTracking(BaseModel):
 #                  STORYTELLER OUTPUT SCHEMA (ChapterMetadata)
 # =============================================================================
 
-class ChapterMetadata(BaseModel):
+class ChapterMetadata(GeminiCompatibleModel):
     """
     Validated schema for the JSON metadata block the Storyteller appends
     after the narrative text in each chapter.
@@ -228,7 +254,7 @@ LEGACY_FIELD_MAPPINGS = {
 #                    ARCHIVIST OUTPUT SCHEMA (BibleDelta)
 # =============================================================================
 
-class RelationshipUpdate(BaseModel):
+class RelationshipUpdate(GeminiCompatibleModel):
     """Update to a single relationship."""
     model_config = ConfigDict(extra="forbid")
 
@@ -242,7 +268,7 @@ class RelationshipUpdate(BaseModel):
 
 
 
-class CharacterVoiceUpdate(BaseModel):
+class CharacterVoiceUpdate(GeminiCompatibleModel):
     """Update to a character's voice profile."""
     model_config = ConfigDict(extra="forbid")
 
@@ -255,7 +281,7 @@ class CharacterVoiceUpdate(BaseModel):
 
 
 
-class KnowledgeUpdate(BaseModel):
+class KnowledgeUpdate(GeminiCompatibleModel):
     """Update to knowledge boundaries."""
     model_config = ConfigDict(extra="forbid")
 
@@ -265,7 +291,7 @@ class KnowledgeUpdate(BaseModel):
 
 
 
-class DivergenceRefinement(BaseModel):
+class DivergenceRefinement(GeminiCompatibleModel):
     """Refinement to an existing divergence entry."""
     model_config = ConfigDict(extra="forbid")
 
@@ -277,7 +303,7 @@ class DivergenceRefinement(BaseModel):
 
 
 
-class NewDivergence(BaseModel):
+class NewDivergence(GeminiCompatibleModel):
     """A new divergence to record."""
     model_config = ConfigDict(extra="forbid")
 
@@ -290,7 +316,7 @@ class NewDivergence(BaseModel):
 
 
 
-class BibleDelta(BaseModel):
+class BibleDelta(GeminiCompatibleModel):
     """
     Structured output schema for the Archivist agent.
 
@@ -382,7 +408,7 @@ class BibleDelta(BaseModel):
 
 # ─── Lore Keeper Output Schema ─────────────────────────────────────────────────
 
-class LoreKeeperOutput(BaseModel):
+class LoreKeeperOutput(GeminiCompatibleModel):
     """
     Structured output schema for the Lore Keeper agent during init.
 
