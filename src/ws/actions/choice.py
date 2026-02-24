@@ -151,7 +151,7 @@ STORY STATE (from World Bible):
 - Status: {char_sheet.get('status', {}).get('condition', 'Normal') if isinstance(char_sheet.get('status'), dict) else 'Normal'}"""
 
     # Dynamically switch to game pipeline (Archivist + Storyteller)
-    ctx.active_agent = build_game_pipeline(ctx.story_id, universes=universes, deviation=deviation)
+    ctx.active_agent = await build_game_pipeline(ctx.story_id, universes=universes, deviation=deviation)
 
     metadata_section = ""
     if last_chapter_metadata:

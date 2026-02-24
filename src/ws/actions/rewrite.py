@@ -88,7 +88,7 @@ async def handle_rewrite(ctx: WsSessionContext, inner_data: dict) -> ActionResul
 - Status: {char_sheet.get('status', {}).get('condition', 'Normal') if isinstance(char_sheet.get('status'), dict) else 'Normal'}"""
 
     # 5. Switch to game pipeline
-    ctx.active_agent = build_game_pipeline(ctx.story_id, universes=universes, deviation=deviation)
+    ctx.active_agent = await build_game_pipeline(ctx.story_id, universes=universes, deviation=deviation)
 
     bible_state_section = ""
     if ctx.bible_snapshot_content:

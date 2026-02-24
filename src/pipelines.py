@@ -45,9 +45,9 @@ async def build_init_pipeline(story_id: str, universes: List[str], deviation: st
     # 1. Research Swarm - Now uses dynamically generated topics from Query Planner
     agents.append(create_lore_hunter_swarm(specific_topics=research_topics))
     # 2. Lore Keeper (Permanently updates the Bible)
-    agents.append(create_lore_keeper(story_id=story_id))
+    agents.append(await create_lore_keeper(story_id=story_id))
     # 3. Storyteller (Takes context, writes chapter + choices)
-    agents.append(create_storyteller(story_id=story_id, universes=universes, deviation=deviation))
+    agents.append(await create_storyteller(story_id=story_id, universes=universes, deviation=deviation))
 
     return SequentialAgent(name="init_pipeline", sub_agents=agents)
 
@@ -65,15 +65,15 @@ async def get_story_universes(story_id: str) -> tuple[List[str], str]:
     return ["General"], ""
 
 
-def build_game_pipeline(story_id: str, universes: List[str] = None, deviation: str = "") -> SequentialAgent:
+async def build_game_pipeline(story_id: str, universes: List[str] = None, deviation: str = "") -> SequentialAgent:
     agents = []
 
     # 1. Archivist (Updates Bible based on previous turn)
-    agents.append(create_archivist(story_id=story_id))
+    agents.append(await create_archivist(story_id=story_id))
 
     # 2. Storyteller (Checks research, Writes chapter + choices)
     # Pass universes for context if available
-    agents.append(create_storyteller(story_id=story_id, universes=universes, deviation=deviation))
+    agents.append(await create_storyteller(story_id=story_id, universes=universes, deviation=deviation))
 
     return SequentialAgent(name="game_pipeline", sub_agents=agents)
 
