@@ -46,14 +46,16 @@ async def handle_init(ctx: WsSessionContext, inner_data: dict) -> ActionResult:
     genre = inner_data.get("genre", "Fantasy")
     theme = inner_data.get("theme", "Mystery")
 
-    ctx.input_text = f"""PHASE: INITIALIZATION
-GENRE: {genre}
-THEME: {theme}
+    research_focus = user_req if user_req else "Research the specified universes AND any power sources mentioned in the OC description."
+
+    ctx.input_text = """PHASE: INITIALIZATION
+GENRE: {}
+THEME: {}
 
 ═══════════════════════════════════════════════════════════════════════════════
                          OC/SI DESCRIPTION (CRITICAL)
 ═══════════════════════════════════════════════════════════════════════════════
-{deviation}
+{}
 
 **IMPORTANT FOR LORE HUNTERS:**
 If the OC has powers from a CHARACTER (e.g., "Gojo's powers", "Taylor's abilities"),
@@ -61,14 +63,14 @@ you MUST research that character's power system, techniques, limitations, and ho
 This is ESSENTIAL even if the power source is from a different universe than the story setting.
 ═══════════════════════════════════════════════════════════════════════════════
 
-RESEARCH FOCUS: {user_req if user_req else "Research the specified universes AND any power sources mentioned in the OC description."}
+RESEARCH FOCUS: {}
 
 INSTRUCTIONS FOR RESEARCH AGENTS:
 - Lore Hunters: Search for canonical information about the universes AND any crossover power sources. DO NOT write narrative.
 - Lore Keeper: Consolidate research into the World Bible, including power_origins data. DO NOT write narrative.
 - Storyteller: After research is complete, write the first chapter.
 
-Each agent should perform ONLY their designated role."""
+Each agent should perform ONLY their designated role.""".format(genre, theme, deviation, research_focus)
 
     logger.log("pipeline", f"Enabled INIT pipeline for story {ctx.story_id}")
     return ActionResult(needs_runner=True)
