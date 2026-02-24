@@ -137,24 +137,25 @@ async def handle_research(ctx: WsSessionContext, inner_data: dict) -> ActionResu
 
                 result = await asyncio.wait_for(
                     meta.trigger_research(gap_query, depth=depth, universes=universes),
-                    timeout=60.0
+                    timeout=180.0
                 )
                 return {"query": gap_query, "success": True, "result": result}
             except asyncio.TimeoutError:
-                return {"query": gap_query, "success": False, "error": "Timeout (60s)"}
+                return {"query": gap_query, "success": False, "error": "Timeout (180s)"}
             except Exception as e:
                 return {"query": gap_query, "success": False, "error": str(e)}
 
-        # Run research with timeout for the whole gather
+        # Run research with timeout for the whole gather (allow ~180s × num_gaps)
         try:
+            gather_timeout = max(600.0, 180.0 * len(gaps))
             results = await asyncio.wait_for(
                 asyncio.gather(*[research_gap(gap) for gap in gaps]),
-                timeout=300.0
+                timeout=gather_timeout
             )
         except asyncio.TimeoutError:
             await manager.send_json({
                 "type": "content_delta",
-                "text": f"⚠️ Research timeout (5 minutes exceeded). Partial results shown below.\n",
+                "text": f"⚠️ Research timeout (total {gather_timeout:.0f}s exceeded). Partial results shown below.\n",
                 "sender": "system"
             }, ctx.websocket)
             results = []
