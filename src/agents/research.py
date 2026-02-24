@@ -787,22 +787,22 @@ Quick reference for faction control - update when researching factions:
 **POWER ORIGINS FORMAT** (`power_origins.sources`):
 When OC has powers from a specific canon character, structure as:
 ```json
-{
+{{
   "power_name": "Name of power/ability",
   "original_wielder": "Canon character who had this power",
   "source_universe": "Where this power comes from",
   "canon_techniques": [
-    {"name": "Technique name", "description": "How it works", "limitations": "Costs/cooldowns", "source": "[citation]"}
+    {{"name": "Technique name", "description": "How it works", "limitations": "Costs/cooldowns", "source": "[citation]"}}
   ],
   "canon_scene_examples": [
-    {
+    {{
       "scene": "Brief description of the scene/fight",
       "power_used": "Which power/technique was used",
       "how_deployed": "Detailed description of HOW the power manifested - visuals, timing, tactics",
       "opponent_or_context": "Who/what they were fighting or the situation",
       "outcome": "What happened as a result",
       "source": "[citation - chapter/episode/issue]"
-    }
+    }}
   ],
   "combat_style": "How the original wielder typically fights - aggressive/defensive/tactical/ambush",
   "signature_moves": ["Most iconic/frequently used techniques with brief descriptions"],
@@ -814,7 +814,7 @@ When OC has powers from a specific canon character, structure as:
   "weaknesses_and_counters": ["What defeats this power"],
   "unexplored_potential": ["Theoretical extensions marked as [THEORETICAL]"],
   "oc_current_mastery": "Where OC is in the progression"
-}
+}}
 ```
 
 **CHARACTER VOICE FORMAT** (`character_voices.<CharacterName>`):
