@@ -238,61 +238,109 @@ class BibleTools:
             
             return json.dumps(val, indent=2)
 
-    async def update_bible(self, key: str, value: Any) -> str:
+    async def update_bible(self, key: str, value: Any, max_retries: int = 3) -> str:
         """
-        Updates the World Bible in the database. Key should be dot notation.
-        Value should be a JSON-serializable object or string.
+        Updates the World Bible in the database using optimistic concurrency control.
+        Key should be dot notation. Value should be a JSON-serializable object or string.
 
-        Uses SELECT ... FOR UPDATE to prevent race conditions when multiple
-        updates are made in parallel (e.g., from batched agent tool calls).
+        Implements optimistic locking with version_number field to handle concurrent updates
+        from multiple agents (e.g., Lore Keeper batched updates + Archivist updates).
+
+        Args:
+            key: Dot-notation path to the field being updated (e.g., "power_origins.sources")
+            value: The value to set
+            max_retries: Number of times to retry on version conflict (default 3)
+
+        Returns:
+            Success or error message. On version conflict after max retries, returns error.
         """
-        async with AsyncSessionLocal() as session:
+        import copy
+        import logging
+        logger = logging.getLogger("fable.core_tools")
+
+        for attempt in range(max_retries):
             try:
-                # Use FOR UPDATE to acquire row-level lock, preventing race conditions
-                # when multiple update_bible calls run concurrently
-                stmt = select(WorldBible).where(
-                    WorldBible.story_id == self.story_id
-                ).with_for_update()
-                result = await session.execute(stmt)
-                bible = result.scalar_one_or_none()
+                async with AsyncSessionLocal() as session:
+                    # Step 1: Read current version (no lock needed for optimistic)
+                    stmt = select(WorldBible).where(
+                        WorldBible.story_id == self.story_id
+                    )
+                    result = await session.execute(stmt)
+                    bible = result.scalar_one_or_none()
 
-                if not bible:
-                    return "Error: World Bible not found."
+                    if not bible:
+                        return "Error: World Bible not found."
 
-                # Deep copy to avoid reference issues
-                import copy
-                data = copy.deepcopy(bible.content) if bible.content else {}
+                    # Capture version at read time
+                    original_version = bible.version_number
 
-                keys = key.split('.')
-                current = data
-                for k in keys[:-1]:
-                    if k not in current:
-                        current[k] = {}
-                    current = current[k]
+                    # Step 2: Make local modifications
+                    data = copy.deepcopy(bible.content) if bible.content else {}
+                    keys = key.split('.')
+                    current = data
+                    for k in keys[:-1]:
+                        if k not in current:
+                            current[k] = {}
+                        current = current[k]
 
-                # Validate and fix the value before saving (converts legacy formats)
-                validated_value = validate_and_fix_bible_entry(key, value)
-                current[keys[-1]] = validated_value
+                    # Validate and fix the value before saving (converts legacy formats)
+                    validated_value = validate_and_fix_bible_entry(key, value)
+                    current[keys[-1]] = validated_value
 
-                # Explicitly flag modified for JSON types in SQLAlchemy
-                bible.content = data
-                flag_modified(bible, "content")
+                    # Step 3: Attempt write with version check
+                    # Re-fetch to check for concurrent modifications
+                    refresh_stmt = select(WorldBible).where(
+                        WorldBible.story_id == self.story_id
+                    )
+                    refresh_result = await session.execute(refresh_stmt)
+                    current_bible = refresh_result.scalar_one_or_none()
 
-                await session.commit()
+                    if current_bible.version_number != original_version:
+                        # Version mismatch: another update occurred while we were modifying
+                        await session.rollback()
+                        if attempt < max_retries - 1:
+                            logger.debug(
+                                f"Version conflict on '{key}' (v{original_version} → v{current_bible.version_number}). "
+                                f"Retrying... (attempt {attempt + 1}/{max_retries})"
+                            )
+                            continue  # Retry the entire operation
+                        else:
+                            return (
+                                f"Error updating '{key}': Version conflict after {max_retries} retries. "
+                                "Too many concurrent updates."
+                            )
 
-                # Sync to disk for debugging (User Requirement)
-                # We do this specifically so the user can see the latest state in the IDE
-                try:
-                    with open(BIBLE_PATH, 'w') as f:
-                        json.dump(data, f, indent=2)
-                except Exception as e:
-                    import logging
-                    logging.getLogger("fable.core_tools").warning("Failed to sync bible to disk: %s", e)
+                    # Step 4: Commit with incremented version
+                    current_bible.content = data
+                    current_bible.version_number += 1
+                    flag_modified(current_bible, "content")
 
-                return f"Successfully updated '{key}'."
+                    await session.commit()
+
+                    logger.debug(
+                        f"Successfully updated '{key}' (v{original_version} → v{current_bible.version_number})"
+                    )
+
+                    # Sync to disk for debugging (User Requirement)
+                    try:
+                        with open(BIBLE_PATH, 'w') as f:
+                            json.dump(data, f, indent=2)
+                    except Exception as e:
+                        logger.warning("Failed to sync bible to disk: %s", e)
+
+                    return f"Successfully updated '{key}'."
+
             except Exception as e:
-                await session.rollback()
-                return f"Error updating bible: {str(e)}"
+                logger.error(f"Error in update_bible attempt {attempt + 1}: {str(e)}")
+                try:
+                    await session.rollback()
+                except:
+                    pass
+                if attempt == max_retries - 1:
+                    return f"Error updating bible after {max_retries} retries: {str(e)}"
+                # Otherwise, retry the loop
+
+        return f"Error: Failed to update '{key}' after {max_retries} retries."
 
     async def get_upcoming_canon_events(self, count: int = 5) -> str:
         """

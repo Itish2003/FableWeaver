@@ -351,6 +351,19 @@ async def scrape_url(url: str) -> str:
 def create_lore_hunter_swarm(universes: List[str] = None, specific_topics: List[str] = None) -> SequentialAgent:
     """
     Creates a swarm of researchers with enhanced canonical accuracy.
+
+    NOTE ON CONCURRENT EXECUTION (Issue #20):
+    Multiple Lore Hunter agents execute in parallel (ParallelAgent).
+    Each agent creates independent tools (BibleTools, MetaTools) with their own
+    AsyncSessionLocal() database connections, providing natural database-level isolation.
+
+    Risk of concurrent Bible updates is mitigated by:
+    1. Optimistic concurrency control in BibleTools.update_bible() (version_number field)
+    2. Lore Hunters produce INDEPENDENT research outputs (not concurrent Bible updates)
+    3. Lore Keeper (subsequent sequential agent) synthesizes all research into Bible
+
+    Future optimization: Could implement per-agent ADK session namespacing for even
+    stronger isolation if ADK's DatabaseSessionService supports sub-sessions.
     """
     agents = []
     research_topics = []
