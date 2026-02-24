@@ -337,7 +337,6 @@ async def review_setup(request: SetupReviewRequest) -> Dict[str, str]:
 
         return {
             "summary": response.text.strip(),
-            "confirmed": request.confirmed,
         }
 
     except Exception as e:

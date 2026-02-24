@@ -1,0 +1,30 @@
+{
+  "test_date": "2026-02-24 21:33:37",
+  "phases": {
+    "initialization": {
+      "total_time_seconds": 309.8487710952759,
+      "messages_received": 35,
+      "content_length": 24465,
+      "content_word_count": 3889,
+      "choices_count": 0,
+      "choices": [],
+      "init_complete": false
+    },
+    "validation": {
+      "criteria": {
+        "content_generated": true,
+        "sufficient_length": true,
+        "personality_evident": true,
+        "no_power_abuse": true,
+        "relationship_referenced": true,
+        "restraint_concept_present": true,
+        "choices_meaningful": false,
+        "choice_quality": true
+      },
+      "passed": 7,
+      "total": 8,
+      "pass_rate": "87.5%"
+    }
+  },
+  "metrics": {}
+}

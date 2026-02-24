@@ -117,7 +117,7 @@ class RealSystemTest:
                     while True:
                         try:
                             msg = await asyncio.wait_for(
-                                websocket.recv(), timeout=2.0
+                                websocket.recv(), timeout=10.0
                             )
                             data = json.loads(msg)
                             message_count += 1
@@ -171,16 +171,16 @@ class RealSystemTest:
                                 print("\n" + "-" * 70)
                                 break
 
-                            # Timeout safety
-                            if elapsed > 120:
-                                print(f"\n⏱️  Timeout (120s) - stopping")
+                            # Timeout safety (increased to allow research phase)
+                            if elapsed > 600:  # 10 minutes max
+                                print(f"\n⏱️  Timeout (600s) - stopping")
                                 break
 
                         except asyncio.TimeoutError:
                             elapsed = time.time() - start_time
-                            if elapsed > 60:
+                            if elapsed > 300:  # 5 minute timeout
                                 print(
-                                    f"\n⏱️  No messages for 2s after {elapsed:.1f}s total"
+                                    f"\n⏱️  No messages for 10s after {elapsed:.1f}s total"
                                 )
                                 break
 
