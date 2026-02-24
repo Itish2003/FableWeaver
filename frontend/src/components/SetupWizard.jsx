@@ -144,7 +144,7 @@ export default function SetupWizard({ onInit, isConnecting }) {
       });
 
       const data = await response.json();
-      onInit(data.story_id);
+      onInit(data.story_id, config);
     } catch (error) {
       console.error('Error confirming setup:', error);
       setConversation(prev => [

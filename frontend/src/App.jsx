@@ -143,7 +143,20 @@ function App() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                   Cancel
                 </button>
-                <SetupWizard onInit={(storyId) => { engine.resumeGame(storyId); setIsCreating(false); }} isConnecting={false} />
+                <SetupWizard onInit={(storyId, config) => {
+                  engine.resumeGame(storyId);
+                  setIsCreating(false);
+                  // Send init action to trigger generation
+                  setTimeout(() => {
+                    engine.sendInit({
+                      universes: config.universes || [],
+                      user_input: config.user_context || '',
+                      genre: config.story_tone || 'balanced',
+                      theme: config.themes?.join(', ') || '',
+                      timeline_deviation: config.power_level || '',
+                    });
+                  }, 500);
+                }} isConnecting={false} />
               </div>
             </motion.div>
           ) : (

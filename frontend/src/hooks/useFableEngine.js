@@ -262,6 +262,19 @@ export function useFableEngine() {
     setActiveGameId(gameId);
   };
 
+  const sendInit = (initPayload) => {
+    // Set the payload to be sent when WebSocket connects
+    initPayloadRef.current = initPayload;
+    // If already connected, send immediately
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        action: 'init',
+        payload: { ...initPayload, session_id: activeGameIdRef.current }
+      }));
+      initPayloadRef.current = null;
+    }
+  };
+
   const sendChoice = (choiceText) => {
     if (!ws.current || !activeGameId) return;
     const payload = { choice: choiceText, session_id: activeGameId };
@@ -447,6 +460,7 @@ export function useFableEngine() {
     bibleLoading,
     createNewGame,
     resumeGame,
+    sendInit,
     sendChoice,
     sendResearch,
     sendCommand,
