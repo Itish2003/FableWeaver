@@ -138,32 +138,25 @@
     },
     "canon_scene_examples": [
       {
-        "power_used": "Jajanken / Nen Vow",
-        "outcome": "Total destruction of Neferpitou.",
-        "source": "Hunter x Hunter Manga Ch. 305-306",
-        "scene": "Gon vs Neferpitou (HxH)",
-        "how_deployed": "Gon used a massive Vow and Limitation to sacrifice his future potential for immediate power."
+        "source": "Jujutsu Kaisen Manga/Anime",
+        "scene": "Yuji Itadori vs Hanami",
+        "how_deployed": "Concentrated cursed energy within 0.000001 seconds of a physical impact.",
+        "outcome": "Spatial distortion and power raised to the 2.5 exponent.",
+        "power_used": "Black Flash"
       },
       {
-        "power_used": "Thunderclap and Flash (Thunder Breathing)",
-        "how_deployed": "Zenitsu used Total Concentration Breathing to perform a single, lightning-fast dash and draw technique.",
-        "scene": "Zenitsu vs Spider Demon (Elder Brother) (Demon Slayer)",
-        "source": "Demon Slayer Manga Ch. 33-34",
-        "outcome": "Beheaded the Spider Demon (Elder Brother)."
+        "source": "Hunter x Hunter Anime",
+        "scene": "Gon Freecss vs Genthru",
+        "how_deployed": "Charging aura in the fist with a rhythmic chant (First comes rock...).",
+        "outcome": "Delivers a massive enhanced punch (Rock) or aura projectile (Paper).",
+        "power_used": "Jajanken"
       },
       {
-        "scene": "Gojo vs Jogo (Jujutsu Kaisen)",
-        "how_deployed": "Gojo deployed an Infinite Void domain to flood Jogo's brain with infinite information, paralyzing him.",
-        "outcome": "Jogo was rendered immobile and decapitated.",
-        "source": "Jujutsu Kaisen Manga Ch. 15-16",
-        "power_used": "Domain Expansion: Infinite Void"
-      },
-      {
-        "power_used": "Flame Alchemy",
-        "outcome": "Envy was incinerated to a core state.",
-        "source": "FMA Manga Ch. 94-95",
-        "scene": "Roy Mustang vs Envy (Fullmetal Alchemist)",
-        "how_deployed": "Mustang used his gloves to adjust oxygen density and ignite it repeatedly with a spark from his fingers."
+        "source": "Naruto Anime/Manga",
+        "scene": "Sasuke Uchiha vs Gaara",
+        "how_deployed": "Channeling lightning-natured chakra into the palm and sprinting at high speed.",
+        "outcome": "High-penetration piercing attack.",
+        "power_used": "Chidori"
       }
     ],
     "Tatsuya_Shiba": {
@@ -212,6 +205,19 @@
         "Psions (particles of thought/intent)",
         "Pushions (particles of emotion/spirit)"
       ]
+    },
+    "Ryomen_Sukuna": {
+      "signature_moves": [
+        "Cleave",
+        "Dismantle",
+        "Malevolent Shrine (No-barrier Domain)",
+        "Fire Arrow (Fuga)"
+      ]
+    },
+    "Leonhard_Saijo": {
+      "signature_moves": [
+        "Fortress Magic (Molecular-bond strengthening)"
+      ]
     }
   },
   "world_state": {
@@ -244,7 +250,25 @@
         "mahouka": [
           "Ten Master Clans (Yotsuba, Saegusa, etc.)",
           "101 Independent Magic-Equipped Battalion"
-        ]
+        ],
+        "blanche": {
+          "description": "An international extremist group advocating for the 'equalization' of human rights by abolishing magician privileges. They use mind control and propaganda to infiltrate schools and steal research.",
+          "type": "International Anti-Magician Terrorist Organization",
+          "hierarchy": {
+            "collaborators": "Coerced students and civilians support activities",
+            "japanese_branch_leader": "Hajime Ohama",
+            "operatives": "Infiltrators using magic-nullifying 'Antinite' material"
+          }
+        },
+        "jujutsu_high_schools": {
+          "description": "Secret vocational schools (Tokyo and Kyoto) serving as training grounds for sorcerers and regional hubs for managing missions via 'Windows'.",
+          "type": "Educational & Operational Military Academies",
+          "hierarchy": {
+            "student_ranking": "Strict hierarchy from Grade 4 (lowest) to Grade 1; 'Special Grade' for anomalous power.",
+            "principal": "Administrative head (e.g., Masamichi Yaga for Tokyo).",
+            "faculty": "Grade 1 sorcerers acting as teachers (e.g., Satoru Gojo, Kento Nanami)."
+          }
+        }
       },
       "mahouka_locations": {
         "kudou_estate": {
@@ -257,6 +281,11 @@
           "type": "Key Building / Clan Headquarters",
           "significance": "Administrative center for Yotsuba in Tokyo; base of operations for Maya Yotsuba in the capital.",
           "location": "Chofu, Tokyo"
+        },
+        "yotsuba_village": {
+          "location": "Nagano/Yamanashi border",
+          "type": "Territory/Secret Neighborhood",
+          "description": "Hidden village on the border of Nagano and Yamanashi. Main residence of the Yotsuba Clan, protected by a Psion barrier that makes it unperceivable to outsiders."
         }
       },
       "jjk_locations": {
@@ -274,6 +303,11 @@
           "significance": "Base for Kanto sorcerers; houses powerful cursed objects; protected by Master Tengen's 'Pure Barriers.'",
           "type": "Key Building / Territory",
           "description": "Hidden campus on Tokyo's outskirts built in traditional Buddhist temple style (visually based on Kiyomizu-dera)."
+        },
+        "tombs_star_corridor": {
+          "description": "Sacred subterranean residence of Master Tengen located beneath Tokyo Jujutsu High. The most heavily protected area in the jujutsu world.",
+          "type": "Territory/Landmark",
+          "location": "Beneath Tokyo Jujutsu High"
         }
       },
       "locations": {
@@ -584,6 +618,23 @@
           "Black Flash (0.000001s impact)"
         ],
         "rules": "Innate Techniques are engraved into the soul/brain from birth."
+      },
+      "nen_system": {
+        "principles": [
+          "Ten (Shroud)",
+          "Zetsu (Null)",
+          "Ren (Enhance)",
+          "Hatsu (Release)"
+        ],
+        "six_types": [
+          "Enhancement",
+          "Transmutation",
+          "Emission",
+          "Conjuration",
+          "Manipulation",
+          "Specialization"
+        ],
+        "source": "Aura (life energy inherent in all living beings)"
       }
     }
   },
@@ -650,7 +701,12 @@
       "personality": "Purely hedonistic, cruel, and self-serving. Lives for his own pleasure and respects only absolute strength."
     },
     "Megumi_Fushiguro": {
-      "personality": "Stoic and pragmatic; believes in saving people selectively based on their moral character."
+      "personality": "Stoic and pragmatic; believes in saving people selectively based on their moral character.",
+      "speech_patterns": [
+        "Logical and blunt delivery",
+        "Serious tone even in casual situations",
+        "Pragmatic and risk-calculating speech during combat"
+      ]
     },
     "Katsuto_Juumonji": {
       "personality": "Stoic, dignified, and unwavering; prioritizes duty and clan stability."
@@ -699,6 +755,9 @@
     },
     "Maya_Yotsuba": {
       "personality": "Known as the 'Demon King of the Far East'. Absolute leader of the Yotsuba Clan."
+    },
+    "Shiba_Tatsuya": {
+      "vocabulary_level": "High/Technical"
     }
   },
   "knowledge_boundaries": {
