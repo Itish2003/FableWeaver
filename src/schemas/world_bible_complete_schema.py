@@ -362,10 +362,10 @@ class DivergenceStats(BaseModel):
 
 class DivergencesSection(BaseModel):
     """Complete divergences section with statistics"""
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    list: List[Divergence] = Field(default_factory=list)
-    butterfly_effects: List[ButterflyEffect] = Field(default_factory=list)
+    list: List[Divergence] = Field(default_factory=lambda: [], alias="list")
+    butterfly_effects: List[ButterflyEffect] = Field(default_factory=lambda: [])
     stats: DivergenceStats = Field(default_factory=DivergenceStats)
 
     @model_validator(mode="after")
