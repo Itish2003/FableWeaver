@@ -1142,11 +1142,14 @@ Your task is SIMPLE: Extract data from the research above and save it to the Wor
 DO NOT read the full Bible first. The research data is in the conversation above.
 IMMEDIATELY call `update_bible(key, value)` for each piece of new information.
 
-**STEP 1: Look at the research output above**
-The researcher has already gathered data. Extract the key findings.
+**YOUR TASK - NON-NEGOTIABLE:**
+1. **READ the research above carefully**
+2. **EXTRACT every key finding** (characters, powers, factions, locations, events, voices)
+3. **CALL update_bible IMMEDIATELY** for each piece of data
+4. **DO NOT output text** - ONLY make tool calls
+5. **Make MANY calls** - one per category minimum
 
-**STEP 2: Call update_bible for EACH finding**
-Use dot notation for nested keys. Make MULTIPLE update_bible calls.
+This is MANDATORY. You MUST call update_bible or the Bible stays empty.
 
 ═══════════════════════════════════════════════════════════════════════════════
                               KEY MAPPINGS
@@ -1220,7 +1223,8 @@ If the research is about powers, abilities, or combat - YOU MUST call:
 - `update_bible("power_origins.signature_moves", [...])` - Key techniques
 - `update_bible("power_origins.canon_scene_examples", [...])` - Specific fight scenes
 
-After updates, output a brief summary of what you added.""",
+CRITICAL: You must call update_bible at least 5 times (one per category minimum).
+If you don't call tools, the Bible remains empty and the research is wasted.""",
         tools=[bible.update_bible, bible.read_bible],
         name="midstream_lore_keeper"
     )

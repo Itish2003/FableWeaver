@@ -79,13 +79,16 @@
         "strain_level": "medium"
       }
     },
-    "combat_style": "Multifaceted systems involving high-speed energy projection (Ki), elemental Ninjutsu/Genjutsu (Chakra), tactical aura manipulation (Nen), emotion-driven Cursed Energy, and matter-altering Alchemy. Combat often emphasizes physical reinforcement, strategic resource management (stamina/energy), and the use of 'Vows' or 'Binding Contracts' to multiply power.",
+    "combat_style": {
+      "Tatsuya_Shiba": "Special Strategic Class Magician serving as the 101st Independent Magic-Equipped Battalion's primary 'irregular' asset. Strategic level deployment of magic in military warfare."
+    },
     "Yuji_Itadori": {
       "signature_moves": [
         "Divergent Fist",
         "Black Flash",
         "Soul Strike"
-      ]
+      ],
+      "combat_style": "Close-range brawler combining superhuman physical strength with delayed cursed energy impacts and blood manipulation."
     },
     "Satoru_Gojo": {
       "signature_moves": [
@@ -97,8 +100,9 @@
       ]
     },
     "weaknesses": [
-      "MCA Overheating (Mahouka) - excessive use leads to physical collapse",
-      "Technique Burnout (JJK) - temporary loss of innate technique after Domain Expansion"
+      "Overheating of the Magic Calculation Area (Mahouka)",
+      "Negative emotions required for Cursed Energy (JJK)",
+      "Unpredictable consequences for breaking Binding Vows with others (JJK)"
     ],
     "satoru_gojo": {
       "weaknesses": [
@@ -134,25 +138,32 @@
     },
     "canon_scene_examples": [
       {
-        "source": "Mahouka Yokohama Disturbance Arc",
-        "outcome": "Terrorist attack repelled; demonstration of student combat capabilities.",
-        "scene": "Yokohama Disturbance at Pacifico Yokohama",
-        "power_used": "Tactical and Strategic-class Magic",
-        "how_deployed": "Students defend the convention center venue from a Great Asian Alliance terrorist attack."
+        "power_used": "Jajanken / Nen Vow",
+        "outcome": "Total destruction of Neferpitou.",
+        "source": "Hunter x Hunter Manga Ch. 305-306",
+        "scene": "Gon vs Neferpitou (HxH)",
+        "how_deployed": "Gon used a massive Vow and Limitation to sacrifice his future potential for immediate power."
       },
       {
-        "scene": "The Shibuya Incident",
-        "source": "JJK Shibuya Incident Arc",
-        "outcome": "Satoru Gojo sealed; catastrophic casualties and shift in jujutsu world balance.",
-        "how_deployed": "A massive veil was cast to trap civilians; Satoru Gojo was trapped in the Prison Realm.",
-        "power_used": "Veils, Prison Realm, Domain Expansions"
+        "power_used": "Thunderclap and Flash (Thunder Breathing)",
+        "how_deployed": "Zenitsu used Total Concentration Breathing to perform a single, lightning-fast dash and draw technique.",
+        "scene": "Zenitsu vs Spider Demon (Elder Brother) (Demon Slayer)",
+        "source": "Demon Slayer Manga Ch. 33-34",
+        "outcome": "Beheaded the Spider Demon (Elder Brother)."
       },
       {
-        "how_deployed": "Final war against Sukuna takes place among the skyscrapers.",
-        "power_used": "Domain Expansions, Cleave/Dismantle, Various Innate Techniques",
-        "outcome": "Extensive urban destruction; final confrontation with the King of Curses.",
-        "source": "JJK Shinjuku Showdown Arc",
-        "scene": "Shinjuku Showdown Arc"
+        "scene": "Gojo vs Jogo (Jujutsu Kaisen)",
+        "how_deployed": "Gojo deployed an Infinite Void domain to flood Jogo's brain with infinite information, paralyzing him.",
+        "outcome": "Jogo was rendered immobile and decapitated.",
+        "source": "Jujutsu Kaisen Manga Ch. 15-16",
+        "power_used": "Domain Expansion: Infinite Void"
+      },
+      {
+        "power_used": "Flame Alchemy",
+        "outcome": "Envy was incinerated to a core state.",
+        "source": "FMA Manga Ch. 94-95",
+        "scene": "Roy Mustang vs Envy (Fullmetal Alchemist)",
+        "how_deployed": "Mustang used his gloves to adjust oxygen density and ignite it repeatedly with a spark from his fingers."
       }
     ],
     "Tatsuya_Shiba": {
@@ -162,16 +173,44 @@
     },
     "Megumi_Fushiguro": {
       "signature_moves": [
-        "Ten Shadows Technique",
-        "Divine Dogs",
-        "Mahoraga Adaptation (Summon)",
-        "Chimera Shadow Garden"
+        "Ten Shadows Technique (Divine Dogs, Nue, Max Elephant)",
+        "Eight-Handled Sword Divergent Sila Divine General Mahoraga",
+        "Chimera Shadow Garden (Incomplete Domain)"
       ]
     },
     "Angelina_Kudou_Shields": {
       "signature_moves": [
         "Heavy Metal (Magic)",
         "Brionac (Strategic-class)"
+      ]
+    },
+    "Mikihiko_Yoshida": {
+      "signature_moves": [
+        "Thunder Spawn",
+        "Spirit-based barriers",
+        "Mist creation"
+      ]
+    },
+    "Nobara_Kugisaki": {
+      "signature_moves": [
+        "Straw Doll Technique: Resonance",
+        "Straw Doll Technique: Hairpin"
+      ]
+    },
+    "signature_moves": [
+      "Limitless (JJK)",
+      "Ten Shadows (JJK)",
+      "Blood Manipulation (JJK)",
+      "Strategic Class Magic (Mahouka)",
+      "Casting Assistant Device (CAD) usage (Mahouka)"
+    ],
+    "mechanics_mahouka": {
+      "tools": "CAD (Casting Assistant Device) for Activation Sequences.",
+      "process": "Rewriting Eidos in the Information Dimension to physically effect the world.",
+      "limitations": "MCA (Magic Calculation Area) capacity and speed; overheating risks.",
+      "components": [
+        "Psions (particles of thought/intent)",
+        "Pushions (particles of emotion/spirit)"
       ]
     }
   },
@@ -198,55 +237,14 @@
     "entity_aliases": {},
     "knowledge_base": {
       "factions": {
-        "ten_master_clans": {
-          "description": "The most powerful magician families in Japan who govern the magician community behind the scenes. They are chosen from 28 families with numbers in their names. Their primary duty is national defense.",
-          "type": "Elite Political and Magical Council / Aristocratic Oligarchy",
-          "hierarchy": {
-            "governing_body": "The Master Clan Conference (periodic assembly of all ten heads)",
-            "structure": "Main families and subsidiary branch houses (e.g., Kuroba and Shiba serve the Yotsuba).",
-            "clan_heads": [
-              "Yotsuba Maya",
-              "Saegusa Kouichi",
-              "Juumonji Katsuto"
-            ]
-          }
-        },
-        "star_religious_group": {
-          "hierarchy": [
-            "Representative (Public face/resource manager, e.g., Shigeru Sonoda)",
-            "Children of the Star (General congregation)",
-            "External Contractors (Hired assassins/mercenaries like Toji Fushiguro)"
-          ],
-          "type": "Religious Cult / Non-Sorcerer Organization",
-          "description": "Also known as the Time Vessel Association. An organization of non-sorcerers worshipping Master Tengen as a deity ('The Star'). Opposed to the merger with Star Plasma Vessels as a 'defilement'."
-        },
-        "jujutsu_high_tokyo": {
-          "hierarchy": [
-            "The Higher-ups (Council of conservative elders who dictate laws)",
-            "Principal (Chief administrator, e.g., Masamichi Yaga)",
-            "Teachers/Managers (Sorcerers handling training and logistics)",
-            "Students (Ranked Grade 4 to Special Grade)"
-          ],
-          "type": "Educational Institution / Administrative Headquarters",
-          "description": "One of two schools in Japan (alongside Kyoto) training jujutsu sorcerers. Serves as administrative HQ for the jujutsu world, responsible for sorcerer dispatch and managing cursed objects."
-        },
-        "kenjaku_faction": {
-          "description": "A coalition of Special Grade cursed spirits and curse users led by Kenjaku. Their goal was to seal Satoru Gojo and force human evolution through the Culling Game and merger with Master Tengen.",
-          "hierarchy": {
-            "subordinates": [
-              "Uraume",
-              "Geto's former group remnants"
-            ],
-            "spirit_leaders": [
-              "Mahito",
-              "Jogo",
-              "Hanami",
-              "Dagon"
-            ],
-            "mastermind": "Kenjaku (occupying Suguru Geto's body)"
-          },
-          "type": "Antagonist Consortium / Revolutionary Cell"
-        }
+        "jjk": [
+          "Jujutsu High (Tokyo & Kyoto Schools)",
+          "The Big Three Clans (Zenin, Gojo, Kamo)"
+        ],
+        "mahouka": [
+          "Ten Master Clans (Yotsuba, Saegusa, etc.)",
+          "101 Independent Magic-Equipped Battalion"
+        ]
       },
       "mahouka_locations": {
         "kudou_estate": {
@@ -254,16 +252,28 @@
           "name": "Kudou Main House",
           "type": "Key Building / Clan Estate",
           "location": "Ikoma, Nara (Foothills of Mt. Higashiyama)"
+        },
+        "yotsuba_tokyo_hq": {
+          "type": "Key Building / Clan Headquarters",
+          "significance": "Administrative center for Yotsuba in Tokyo; base of operations for Maya Yotsuba in the capital.",
+          "location": "Chofu, Tokyo"
         }
       },
       "jjk_locations": {
         "culling_game_colonies": {
-          "colonies": [
-            "Tokyo No. 1 (Central Tokyo)",
-            "Sendai (Miyagi)",
-            "Sakurajima Colony (Kagoshima)"
-          ],
-          "description": "Temporary territories established by Kenjaku for the Culling Game."
+          "description": "Ten barrier-enclosed regions across Japan (excluding Hokkaido), e.g., Tokyo No. 1, Tokyo No. 2, Sendai, Sakurajima.",
+          "significance": "Arenas for Kenjaku's Culling Game; lethal battle royales designed to evolve human cursed energy.",
+          "type": "Territories / Battlegrounds"
+        },
+        "zenin_estate": {
+          "location": "Tokyo",
+          "type": "Territory / Clan Compound",
+          "significance": "Traditional Zenin Clan compound with a 'Cursed Warehouse' for tools; modeled after Edo-Tokyo Open Air Architectural Museum."
+        },
+        "tokyo_jujutsu_high": {
+          "significance": "Base for Kanto sorcerers; houses powerful cursed objects; protected by Master Tengen's 'Pure Barriers.'",
+          "type": "Key Building / Territory",
+          "description": "Hidden campus on Tokyo's outskirts built in traditional Buddhist temple style (visually based on Kiyomizu-dera)."
         }
       },
       "locations": {
@@ -285,6 +295,21 @@
             "location": "Miyagi Prefecture",
             "significance": "Hometown of Yuji Itadori; site of Sukuna's reincarnation; later a major Culling Game Colony."
           }
+        },
+        "mahouka_miyaki_island": {
+          "neighborhood": "Izu Islands, Tokyo",
+          "key_landmarks_buildings": [
+            "Miyaki Island Branch (Administration Building and No. 4 Building)"
+          ],
+          "significance": "Military base and prison converted into a base for the Yotsuba Clan and Magian Company; secondary residence for Tatsuya and Miyuki."
+        },
+        "jjk_harajuku": {
+          "neighborhood": "Shibuya Ward, Tokyo",
+          "key_landmarks_buildings": [
+            "Harajuku Station",
+            "Takeshita Street"
+          ],
+          "significance": "Popular youth district; location where Nobara Kugisaki was introduced and joined the first-year team."
         }
       },
       "Magic_Calculation_Area": {
@@ -445,6 +470,120 @@
             "description": "The Battle of Shinjuku; unsealed Gojo faces Sukuna."
           }
         ]
+      },
+      "mahouka_factions": {
+        "ten_master_clans": {
+          "description": "An informal aristocratic governing body and magic oligarchy consisting of the twenty-eight families in Japan capable of producing the most powerful magicians. The top ten families are selected every four years to govern the magician community and provide national defense.",
+          "hierarchy": {
+            "clan_heads": [
+              "Maya Yotsuba (Yotsuba)",
+              "Kouichi Saegusa (Saegusa)"
+            ],
+            "successors": [
+              "Miyuki Shiba",
+              "Masaki Ichijo"
+            ],
+            "patriarch": "Retsu Kudou (Advisor/Elder)"
+          },
+          "type": "Magic Oligarchy / Aristocratic Governing Body"
+        }
+      },
+      "jjk_factions": {
+        "jujutsu_headquarters": {
+          "hierarchy": {
+            "command_structure": "Jujutsu Commander (often a nominee of the Big Three)",
+            "the_higher_ups": "Anonymous panel of elders issuing binding orders",
+            "auxiliaries": "'Windows' (Non-sorcerers/low-level sorcerers for logistics/cleanup)"
+          },
+          "description": "A secretive central administrative and judicial council of elders that regulates all Jujutsu affairs. Known for being conservative and prioritizing the status quo over individual lives.",
+          "type": "Central Governing Body"
+        },
+        "big_three_families": {
+          "hierarchy": {
+            "special_units": [
+              "Hei (Zen'in elite)",
+              "Kukuru (Zen'in non-technique users)"
+            ],
+            "clan_heads": [
+              "Satoru Gojo (Gojo)",
+              "Naobito Zen'in (Zen'in)"
+            ],
+            "council": "Elders who maintain tradition"
+          },
+          "description": "Elite aristocratic sorcerer clans (Gojo, Zen'in, Kamo) existing since the Heian Era. They wield immense political power and control the 'Higher-Ups' of Jujutsu society through inherited techniques.",
+          "type": "Aristocratic Sorcerer Clans"
+        }
+      },
+      "magic_vs_cursed_energy": {
+        "description": "Comparison of magic systems in Mahouka and JJK.",
+        "jujutsu_kaisen": "Cursed Energy is a spiritual/emotional fuel born from negative human emotions.",
+        "mahouka": "Magic is a technological phenomenon involving Psion waves affecting Eidos (information)."
+      },
+      "nen": {
+        "origin": "Accessible to all living things; regulated by the Hunter Association.",
+        "combat_style": "Complex aura manipulation based on four major principles (Ten, Zetsu, Ren, Hatsu) and six specific categories (Enhancement, Transmutation, etc.) for personalized abilities.",
+        "rules": [
+          "High-risk/High-reward applications like Ko (zero defense elsewhere)",
+          "Advanced techniques like Gyo and En for detection"
+        ],
+        "signature_moves": [
+          "Bungee Gum (Hisoka)",
+          "Jajanken (Gon)",
+          "Ten",
+          "Zetsu",
+          "Ren",
+          "Hatsu"
+        ]
+      },
+      "power_system_rules": {
+        "jjk": {
+          "concepts": [
+            "Cursed Energy (Negative Emotions)",
+            "Cursed Techniques (Innate/Brain-engraved)",
+            "Domain Expansion (Guaranteed Hit Space)"
+          ]
+        },
+        "mahouka": {
+          "concepts": [
+            "Psions (Physical Magic Particles)",
+            "Pushions (Soul/Mental Particles)",
+            "Magic Calculation Area (Mental processing)",
+            "CAD (Casting Assistant Devices)"
+          ]
+        }
+      },
+      "Ten_Master_Clans": {
+        "description": "The elite magic families in the Mahouka universe, including the Yotsuba, Juumonji, and Saegusa clans.",
+        "key_figures": [
+          "Maya Yotsuba",
+          "Katsuto Juumonji",
+          "Mayumi Saegusa"
+        ]
+      },
+      "mah_high_locations": {
+        "first_high_school": {
+          "description": "Located in Hachioji, Tokyo; the most prestigious of Japan's nine magic high schools.",
+          "significance": "Primary setting; features a rigid social hierarchy (Blooms vs. Weeds) and a doctrine of student self-determination with powerful Student Council and Disciplinary Committee.",
+          "type": "Key Building / Educational Institution"
+        }
+      },
+      "101_independent_magic_equipped_battalion": {
+        "type": "Elite Military Unit",
+        "description": "A specialized unit within the National Defense Force (NDF) focusing on experimental and practical magic in warfare, utilizing Strategic Class magicians and advanced CAD technology.",
+        "hierarchy": {
+          "commanding_officer": "Major General Saeki Hiromi (Strategist and Unit Commander).",
+          "field_commander": "Colonel Kazama Harunobu (Tactical Operations).",
+          "special_officers": "Specialized experts like Tatsuya Shiba (Fixed-term Soldier/Ooguro Ryuuya) and First Lieutenant Fujibayashi Kyouko.",
+          "battalion_members": "Majors, Captains, and Sergeants (e.g., Major Yanagi, Major Sanada)."
+        }
+      },
+      "cursed_energy": {
+        "origin": "Negative human emotions (fear, hatred, grief) leaking from the body.",
+        "combat_mechanics": [
+          "Domain Expansion (Guaranteed-hit barrier)",
+          "Black Flash (0.000001s impact)"
+        ],
+        "rules": "Innate Techniques are engraved into the soul/brain from birth."
       }
     }
   },
@@ -501,9 +640,10 @@
     "Tatsuya_Shiba": {
       "personality": "Stoic, analytical, and seemingly cold. He is incapable of feeling strong emotions except for familial love toward his sister due to experimental surgery.",
       "topics_they_discuss": [
-        "Magic Sequences/Theory (Taurus Silver)",
-        "Miyuki's safety and well-being",
-        "Strategic operations and 101 Battalion missions"
+        "Magic theory",
+        "Technical specs of CADs",
+        "Miyuki's well-being",
+        "Mission objectives"
       ]
     },
     "Sukuna": {
@@ -536,7 +676,7 @@
         "Affectionate and respectful when addressing Tatsuya ('Onii-sama').",
         "Cold and authoritative when acting as the successor of the Yotsuba Clan."
       ],
-      "personality": "Modest, elegant, and deeply affectionate toward her brother; prone to subconscious 'emotional freezing' of her surroundings when Tatsuya is insulted or approached by other women."
+      "personality": "Polite, elegant, and deeply devoted to Tatsuya; prone to extreme jealousy and coldness toward those she perceives as threats to her brother."
     },
     "Angelina_Kudou_Shields": {
       "personality": "Serious and professional in duty; socially awkward and flustered in civilian life. USNA Commander."
@@ -547,6 +687,18 @@
         "I will decompose anything that stands in our way.",
         "I don't have feelings like others do. The only thing I have left is my love for my sister."
       ]
+    },
+    "Suguru_Geto": {
+      "speech_patterns": [
+        "Refers to non-sorcerers as 'monkeys'",
+        "Calm and charismatic but underlyingly genocidal towards non-sorcerers"
+      ]
+    },
+    "Erika_Chiba": {
+      "personality": "Hot-headed, cheerful, and fiercely independent; dislikes traditional expectations of 'refined lady' status."
+    },
+    "Maya_Yotsuba": {
+      "personality": "Known as the 'Demon King of the Far East'. Absolute leader of the Yotsuba Clan."
     }
   },
   "knowledge_boundaries": {
