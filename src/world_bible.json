@@ -42,9 +42,11 @@
     "name": "",
     "archetype": "",
     "status": {
-      "mental_state": "Hyper-disciplined and stoic; experiencing gradual ego-decay from fragmentation.",
+      "mental_state": "Disciplined but increasingly strained by the complexity of maintaining his fragmented soul in public.",
       "health": "Peak physical condition; under constant spiritual strain due to self-fragmentation.",
-      "power_level": "Anomalous Strategic-Class"
+      "power_level": "Anomalous Strategic-Class",
+      "power_strain": "Low (manual suppression active)",
+      "social_standing": "Elite Course 1 (Bloom), respected/feared as Kudou heir."
     },
     "powers": {},
     "inventory": [],
@@ -64,6 +66,21 @@
         "type": "family",
         "relation": "Younger brother",
         "role_in_story": "Motivation / Prot\u00e9g\u00e9 / Liability"
+      },
+      "Shiba Tatsuya": {
+        "type": "neutral",
+        "relation": "Classmate / Mirror-Anomalous",
+        "trust": "low",
+        "knows_secret_identity": false,
+        "dynamics": "Mutual recognition of 'hidden' natures. Kageaki perceives Tatsuya as a 'void' or 'deletion' in the information dimension, while Tatsuya likely perceives Kageaki's artificial fragmentation. A silent, tense acknowledgment of parity.",
+        "last_interaction": "Chapter 1 - Silent eye contact in the hallway following the Morisaki incident."
+      },
+      "Kudou Retsu": {
+        "type": "family",
+        "relation": "Grandfather / Superior",
+        "trust": "medium",
+        "dynamics": "Strict hierarchical reporting. Kageaki acts as Retsu's 'Shadow' and secret strategic asset, providing intel on school-level anomalies. The relationship is defined by duty and containment.",
+        "last_interaction": "Chapter 1 - Status report regarding the Shiba siblings."
       }
     },
     "knowledge": [],
@@ -164,7 +181,15 @@
   },
   "world_state": {
     "characters": {},
-    "factions": {},
+    "factions": {
+      "Kudou_Family": {
+        "disposition_to_protagonist": "Expectant / Demanding",
+        "current_goals": [
+          "Evaluate the new generation of magicians",
+          "Monitor Shiba siblings"
+        ]
+      }
+    },
     "locations": {
       "Shiba_Residence": {
         "controlled_by": "Shiba Siblings / Yotsuba Family (Shadow)",
@@ -185,6 +210,15 @@
         "controlled_by": "School Admin / Course 1 Students",
         "name": "Practice Hall 1",
         "source": "[WIKI]"
+      },
+      "First_High_Auditorium": {
+        "atmosphere": "Weighted by expectation and stratified by the Bloom/Weed social divide.",
+        "key_features": [
+          "Psion-interference damping fields",
+          "Ornate stage for Freshman Rep"
+        ],
+        "controlled_by": "School Admin",
+        "current_state": "Operational"
       }
     },
     "territory_map": {
@@ -248,6 +282,13 @@
       "topics_to_avoid": [
         "The true cruelty of the Ninth Institute's past experiments"
       ]
+    },
+    "Kudou Kageaki": {
+      "speech_patterns": "Polished, smooth, and hyper-formal in public; clinical and analytical in internal monologue.",
+      "vocabulary_level": "High/Academic/Strategic",
+      "verbal_tics": "Frequently uses containment-related metaphors (layers, loops, voids).",
+      "emotional_tells": "Psion-ripples in shadows when focus wavers; voice remains perfectly flat even when inner fragmentation strains.",
+      "example_dialogue": "\"To the hundreds of students filling the hall, this emblem was a symbol of superiority... To me, it was just another layer of containment.\""
     }
   },
   "knowledge_boundaries": {
@@ -258,13 +299,40 @@
       "The full list of JJK shikigami (Characters must discover them as Kageaki 'tames' his fragments)"
     ],
     "character_secrets": {},
-    "character_knowledge_limits": {},
+    "character_knowledge_limits": {
+      "Kudou Kageaki": {
+        "knows": [
+          "Shiba Tatsuya's information-body signature resembles 'deletion' or a void.",
+          "Shiba Miyuki's Psion coherence is high enough to cause localized environmental freeze/interference.",
+          "Tatsuya can neutralize threats (Morisaki) without standard systematic magic."
+        ],
+        "doesnt_know": [],
+        "suspects": [
+          "The Shiba siblings are associated with a powerful clan (likely Yotsuba) given their specialized nature.",
+          "Tatsuya's 'Weed' status is a deliberate fabrication or a result of specific MCA limitations."
+        ]
+      },
+      "Shiba Tatsuya": {
+        "knows": [
+          "Kudou Kageaki is not a standard Master Clan heir; he possesses an anomalous, fragmented signature."
+        ],
+        "doesnt_know": [],
+        "suspects": [
+          "Kageaki is observing him with intent beyond academic competition."
+        ]
+      }
+    },
     "common_knowledge": []
   },
   "stakes_and_consequences": {
     "costs_paid": [
       {
         "cost": "Mental strain from maintaining Shadow containment during high-stress social interaction",
+        "severity": "medium",
+        "chapter": 1
+      },
+      {
+        "cost": "Psychological strain from maintaining self-containment while exposed to Miyuki's high-output Psion environment.",
         "severity": "medium",
         "chapter": 1
       }
@@ -274,9 +342,20 @@
         "what_almost_happened": "Almost revealed true nature to Tatsuya via Elemental Sight contact",
         "saved_by": "Unknown",
         "chapter": 1
+      },
+      {
+        "what_almost_happened": "Complete exposure of Kageaki's 'Shadow' nature to Tatsuya during their initial hallway confrontation.",
+        "saved_by": "Tatsuya's own desire to maintain a low profile and Kageaki's manual suppression of the Divine Dogs' reaction.",
+        "chapter": 1
       }
     ],
-    "pending_consequences": [],
+    "pending_consequences": [
+      {
+        "action": "Reporting the Shiba siblings' anomalous signatures to Kudou Retsu.",
+        "predicted_consequence": "Retsu will demand deeper surveillance, forcing Kageaki into conflict with Tatsuya's desire for anonymity.",
+        "due_by": "Chapter 5"
+      }
+    ],
     "power_usage_debt": {}
   },
   "canon_character_integrity": {
@@ -429,17 +508,34 @@
         "what_changed": "Kudou Kageaki actively intervened/observed the Hallway Incident, alerting Tatsuya to his presence earlier than canon.",
         "severity": "minor",
         "status": "active",
-        "canon_event": "",
-        "cause": "OC intervention",
-        "ripple_effects": [],
+        "canon_event": "Tatsuya de-escalates the Hallway Incident with Morisaki Shun; observed only by nearby students/Student Council.",
+        "cause": "Kageaki's presence as a Course 1 observer from the Kudou family adds a political layer to the incident.",
+        "ripple_effects": [
+          "The Student Council (Mayumi/Mari) notices Kageaki's interest in Tatsuya.",
+          "Tatsuya identifies Kageaki as a primary threat/asset much earlier than in canon."
+        ],
+        "affected_canon_events": []
+      },
+      {
+        "id": "div_002",
+        "chapter": 0,
+        "what_changed": "Kageaki's internal parasites (Divine Dogs) identified Tatsuya as 'deletion' immediately, creating a predator-prey tension that didn't exist in canon.",
+        "canon_event": "Entrance ceremony is a standard introduction to school hierarchy.",
+        "cause": "Kageaki's JJK-derived sensitivity to information-body integrity.",
+        "severity": "minor",
+        "status": "active",
+        "ripple_effects": [
+          "Heightened initial tension between the two protagonists.",
+          "Kudou family becomes aware of Shiba siblings' anomalies on Day 1."
+        ],
         "affected_canon_events": []
       }
     ],
     "butterfly_effects": [],
     "stats": {
-      "total": 1,
+      "total": 2,
       "major": 0,
-      "minor": 1
+      "minor": 2
     }
   },
   "upcoming_canon_events": {

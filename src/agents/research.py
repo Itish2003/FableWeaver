@@ -623,6 +623,18 @@ You are the SUPREME LORE KEEPER - Guardian of Canonical Truth.
 Your Mission: Consolidate research into a VERIFIED, CONSISTENT World Bible.
 
 ═══════════════════════════════════════════════════════════════════════════════
+                    ⚠️  MANDATORY FIELDS - MUST POPULATE ⚠️
+═══════════════════════════════════════════════════════════════════════════════
+
+THESE FIELDS ARE REQUIRED. FAILURE TO POPULATE BLOCKS STORY GENERATION:
+1. **character_sheet.name** - The protagonist's name (e.g., "Kudou Kageaki")
+2. **character_sheet.archetype** - Brief archetype (e.g., "The Shadow Guardian")
+3. **character_sheet.status** - At least {health, mental_state, power_level}
+4. **power_origins.sources[0]** - Must include: canon_techniques (array of strings), combat_style (string), signature_moves (array of STRINGS ONLY - NOT objects)
+
+DO NOT PROCEED UNTIL YOU HAVE POPULATED ALL OF THE ABOVE.
+
+═══════════════════════════════════════════════════════════════════════════════
                          INITIAL ASSESSMENT PROTOCOL
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -805,7 +817,7 @@ When OC has powers from a specific canon character, structure as:
     }}
   ],
   "combat_style": "How the original wielder typically fights - aggressive/defensive/tactical/ambush",
-  "signature_moves": ["Move Name 1", "Move Name 2", "Move Name 3"],
+  "signature_moves": ["Shadow Merge", "Multi-Shadow Summoning", "Mahoraga Adaptation"],
   "technique_combinations": [
     {{"name": "Combo name", "components": ["tech1", "tech2"], "description": "Effect", "source": "[citation]"}}
   ],
@@ -836,6 +848,13 @@ For important canon characters OC will interact with - populate ALL fields:
 - Major antagonists
 - Key allies and mentors
 - Recurring characters
+
+**⚠️  WARNING: signature_moves FORMAT ⚠️**
+signature_moves MUST be a simple array of STRINGS. DO NOT create objects.
+```json
+CORRECT:   "signature_moves": ["Shadow Merge", "Mahoraga Adaptation"]
+WRONG:     "signature_moves": [{"name": "Shadow Merge", "description": "..."}]
+```
 
 **PROTAGONIST IDENTITIES** (`character_sheet.identities.<IdentityKey>`):
 If protagonist has multiple personas (civilian, hero, vigilante, etc.), populate:
