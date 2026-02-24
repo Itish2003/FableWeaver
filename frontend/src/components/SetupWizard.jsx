@@ -364,7 +364,7 @@ function ReviewStep({ config, summary, onConfirm, onRevise, loading }) {
           whileTap={{ scale: 0.99 }}
           className="btn-primary flex-1"
         >
-          {loading ? 'Creating...' : 'Let's go!'}
+          {loading ? "Creating..." : "Let's go!"}
         </motion.button>
       </div>
     </motion.div>
