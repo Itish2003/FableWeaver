@@ -439,6 +439,10 @@ def check_power_origin_context_leakage(power_origin: dict, universe: Optional[st
     """
     warnings = []
 
+    # Defensive check: if power_origin is not a dict, return no warnings
+    if not isinstance(power_origin, dict):
+        return warnings
+
     # Terms associated with specific universes - loaded from src/data/universe_config.json
     # so new universes can be added without changing this file.
     universe_specific_terms = get_all_leakage_terms()
@@ -497,6 +501,11 @@ def clean_power_origin_context(power_origin: dict) -> dict:
         Cleaned power_origin with universe-specific terms isolated
     """
     import copy
+
+    # Defensive check: if power_origin is not a dict, return it as-is
+    if not isinstance(power_origin, dict):
+        return power_origin
+
     cleaned = copy.deepcopy(power_origin)
 
     universe_specific_terms = get_all_leakage_terms()

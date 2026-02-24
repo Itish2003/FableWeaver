@@ -287,6 +287,12 @@ class BibleTools:
                     for k in keys[:-1]:
                         if k not in current:
                             current[k] = {}
+                        elif not isinstance(current[k], dict):
+                            # If intermediate value is not a dict, replace it with empty dict
+                            logger.warning(
+                                f"Overwriting scalar value at '{k}' with dict for path '{key}'"
+                            )
+                            current[k] = {}
                         current = current[k]
 
                     # Validate and fix the value before saving (converts legacy formats)
