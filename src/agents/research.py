@@ -596,7 +596,7 @@ Proceed with RESEARCH ONLY.
         sub_agents=agents
     )
 
-def create_lore_keeper(story_id: str) -> Agent:
+async def create_lore_keeper(story_id: str) -> Agent:
     """
     Synthesizes research into the initial JSON structure with enhanced validation.
     """
@@ -606,12 +606,17 @@ def create_lore_keeper(story_id: str) -> Agent:
 
     before_timing, after_timing = make_timing_callbacks("Lore Keeper")
 
+    # Fetch setup metadata for conditional instructions
+    from src.utils.setup_metadata import get_setup_metadata, generate_lore_keeper_metadata_section
+    setup_metadata = await get_setup_metadata(story_id)
+    metadata_section = generate_lore_keeper_metadata_section(setup_metadata)
+
     return Agent(
         model=ResilientGemini(model=settings.model_research),
         before_agent_callback=before_timing,
         after_agent_callback=after_timing,
         on_tool_error_callback=tool_error_fallback,
-        instruction="""
+        instruction=f"""
 You are the SUPREME LORE KEEPER - Guardian of Canonical Truth.
 Your Mission: Consolidate research into a VERIFIED, CONSISTENT World Bible.
 
@@ -1155,7 +1160,7 @@ If the research is about powers, abilities, or combat - YOU MUST call:
 - `update_bible("power_origins.canon_scene_examples", [...])` - Specific fight scenes
 
 After updates, output a brief summary of what you added.
-""",
+{metadata_section}""",
         tools=[bible.update_bible, bible.read_bible],
         name="midstream_lore_keeper"
     )

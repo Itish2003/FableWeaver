@@ -16,7 +16,7 @@ from google.genai import types
 from sqlalchemy import select, func
 
 from src.database import AsyncSessionLocal
-from src.models import WorldBible, History
+from src.models import WorldBible, History, Story
 from src.config import get_settings
 from src.utils.logging_config import get_logger
 
@@ -199,13 +199,25 @@ async def before_storyteller_model_callback(callback_context, llm_request):
             )
             result = await session.execute(stmt)
             chapter_count = result.scalar() or 0
+
+            # Fetch story to check for per-story chapter length overrides
+            story_stmt = select(Story).where(Story.id == story_id)
+            story_result = await session.execute(story_stmt)
+            story = story_result.scalar_one_or_none()
+
+            # Use per-story overrides if set, else fall back to global config
+            min_words = story.chapter_min_words_override if story and story.chapter_min_words_override else settings.chapter_min_words
+            max_words = story.chapter_max_words_override if story and story.chapter_max_words_override else settings.chapter_max_words
+
     except Exception:
-        logger.exception("Chapter count query failed in model callback")
-        return None  # non-fatal — proceed without injected context
+        logger.exception("Chapter count/story query failed in model callback")
+        min_words = settings.chapter_min_words
+        max_words = settings.chapter_max_words
+        chapter_count = 0
 
     next_chapter = chapter_count + 1
     llm_request.append_instructions([
         f"Current chapter number: {next_chapter}",
-        f"Word target: {settings.chapter_min_words}-{settings.chapter_max_words} words",
+        f"Word target: {min_words}-{max_words} words",
     ])
     return None  # never skip the model call

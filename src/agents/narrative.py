@@ -12,11 +12,15 @@ from src.callbacks import (
     tool_error_fallback,
     before_storyteller_model_callback,
 )
+from src.utils.setup_metadata import (
+    get_setup_metadata,
+    generate_storyteller_metadata_section,
+)
 
 
 # --- Agents ---
 
-def create_storyteller(story_id: str, model_name: str = None, universes: List[str] = None, deviation: str = "") -> Agent:
+async def create_storyteller(story_id: str, model_name: str = None, universes: List[str] = None, deviation: str = "") -> Agent:
     settings = get_settings()
     model_name = model_name or settings.model_storyteller
 
@@ -26,6 +30,10 @@ def create_storyteller(story_id: str, model_name: str = None, universes: List[st
     universe_ctx = ", ".join(universes) if universes else "General"
 
     _, after_timing = make_timing_callbacks("Storyteller")
+
+    # Fetch setup metadata for conditional instructions
+    setup_metadata = await get_setup_metadata(story_id)
+    metadata_section = generate_storyteller_metadata_section(setup_metadata)
 
     return Agent(
         name="storyteller",
@@ -560,10 +568,10 @@ Before finalizing output, verify:
 ☐ Choices are meaningful and achievable
 
 BEGIN by reading the World Bible. Do not skip this step.
-"""
+{metadata_section}"""
     )
 
-def create_archivist(story_id: str) -> Agent:
+async def create_archivist(story_id: str) -> Agent:
     """
     Create the Archivist agent with structured output schema.
 
@@ -1054,5 +1062,13 @@ faction_updates_json: "{\"FactionName\": {...}}" (JSON string)
 summary: "Brief description of changes"
 
 The World Bible state is provided in the input. Analyze it and the chapter, then output your BibleDelta JSON.
+
+═══════════════════════════════════════════════════════════════════════════════
+                    SETUP CONTEXT: ISOLATION STRATEGY MONITORING
+═══════════════════════════════════════════════════════════════════════════════
+
+If this story has isolation_strategy=true in World Bible meta, watch for
+source-universe context leaking into your updates. Extract mechanics, move
+source references to appropriate fields, rewrite in story-universe terms.
 """
     )
