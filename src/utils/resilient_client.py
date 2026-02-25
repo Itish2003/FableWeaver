@@ -153,13 +153,25 @@ class ModelsProxy:
                     # Retry on rate limits (429) OR server overload (503)
                     is_rate_limit = "429" in error_str or "RESOURCE_EXHAUSTED" in error_str
                     is_server_overload = "503" in error_str or "UNAVAILABLE" in error_str
+                    # Retry on transient network errors (DNS failure, connection reset, timeout)
+                    is_network_error = isinstance(e, (OSError, ConnectionError)) or any(
+                        hint in error_str for hint in (
+                            "CONNECTERROR", "NODENAME", "TIMEOUT",
+                            "CONNECTION RESET", "BROKEN PIPE", "NETWORK",
+                        )
+                    )
 
-                    if is_rate_limit or is_server_overload:
+                    if is_rate_limit or is_server_overload or is_network_error:
                         delay = base_delay * (2 ** attempt)
-                        error_type = "429 Rate Limit" if is_rate_limit else "503 Server Overload"
-                        logger.warning("%s for %s. Attempt %d/%d. Backoff: %ds", error_type, method_name, attempt + 1, retries, delay)
                         if is_rate_limit:
-                            self._parent.rotate()  # Only rotate keys on rate limit, not overload
+                            error_type = "429 Rate Limit"
+                            self._parent.rotate()
+                        elif is_server_overload:
+                            error_type = "503 Server Overload"
+                        else:
+                            error_type = "Network Error"
+                        logger.warning("%s for %s. Attempt %d/%d. Backoff: %ds. Detail: %s",
+                                       error_type, method_name, attempt + 1, retries, delay, str(e)[:120])
                         await asyncio.sleep(delay)
                         continue
                     raise e

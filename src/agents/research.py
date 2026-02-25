@@ -1217,14 +1217,14 @@ def create_midstream_lore_keeper(story_id: str) -> Agent:
         before_agent_callback=before_timing,
         after_agent_callback=after_timing,
         on_tool_error_callback=tool_error_fallback,
-        # FIX #38: Force tool calling — without this, Gemini defaults to AUTO
-        # mode and generates text summaries instead of calling update_bible.
-        # mode=ANY forces the model to call a tool on every turn.
+        # Use AUTO mode so the agent can naturally stop after finishing updates.
+        # ANY mode forces a tool call every turn, which prevents termination and
+        # causes the pipeline to hang after the lore keeper exhausts its data.
+        # Note: allowed_function_names is only valid with ANY mode, not AUTO.
         generate_content_config=genai_types.GenerateContentConfig(
             tool_config=genai_types.ToolConfig(
                 function_calling_config=genai_types.FunctionCallingConfig(
-                    mode="ANY",
-                    allowed_function_names=["update_bible"],
+                    mode="AUTO",
                 )
             )
         ),
@@ -1322,7 +1322,10 @@ If the research is about powers, abilities, or combat - YOU MUST call:
 - `update_bible("power_origins.canon_scene_examples", [...])` - Specific fight scenes
 
 CRITICAL: You must call update_bible at least 5 times (one per category minimum).
-If you don't call tools, the Bible remains empty and the research is wasted.""",
+If you don't call tools, the Bible remains empty and the research is wasted.
+
+**WHEN FINISHED:** After all update_bible calls are done, output a brief summary like
+"Updated X fields: [list of keys]" and STOP. Do NOT make redundant or empty calls.""",
         tools=[bible.update_bible, bible.read_bible],
         name="midstream_lore_keeper"
     )

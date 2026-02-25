@@ -1,6 +1,6 @@
 import json
 import asyncio
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Union
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 from src.database import AsyncSessionLocal
@@ -244,7 +244,7 @@ class BibleTools:
             
             return json.dumps(val, indent=2)
 
-    async def update_bible(self, key: str, value: Any, max_retries: int = 3) -> str:
+    async def update_bible(self, key: str, value: str, max_retries: int = 3) -> str:
         """
         Updates the World Bible in the database using optimistic concurrency control.
         Key should be dot notation. Value should be a JSON-serializable object or string.
@@ -263,6 +263,32 @@ class BibleTools:
         import copy
         import logging
         logger = logging.getLogger("fable.core_tools")
+
+        # Parse JSON strings into native Python types (list/dict).
+        # The parameter is typed as `str` because Gemini doesn't support anyOf
+        # schemas, but the tool needs to store structured data internally.
+        parsed_value: Any = value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped and stripped[0] in ('[', '{'):
+                try:
+                    parsed_value = json.loads(stripped)
+                except (json.JSONDecodeError, ValueError):
+                    pass  # Keep as plain string
+
+        # Guard: Reject bare numeric values (Gemini serialization artifact).
+        if isinstance(parsed_value, (int, float)) and not isinstance(parsed_value, bool):
+            logger.warning(
+                "Rejected numeric value %r for key '%s' — expected str/list/dict. "
+                "Gemini likely serialized the content incorrectly.", parsed_value, key
+            )
+            return (
+                f"ERROR: Received numeric value {parsed_value} for '{key}'. "
+                "This is not valid Bible data. Please pass the ACTUAL content "
+                "(a string, list, or dict), not a number."
+            )
+
+        value = parsed_value
 
         for attempt in range(max_retries):
             try:
