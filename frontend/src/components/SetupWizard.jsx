@@ -140,7 +140,7 @@ export default function SetupWizard({ onInit, isConnecting }) {
       const response = await fetch('/api/setup/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify({ ...config, setup_conversation: conversation }),
       });
 
       const data = await response.json();

@@ -138,9 +138,9 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                             logger.log("archivist_output", f"Received Archivist output: {text_chunk[:500]}...")
                             await _process_archivist_output(ctx.story_id, text_chunk, ctx.websocket)
                         elif event_author == "lore_keeper" or "lore_keeper" in event_author.lower():
-                            # LORE KEEPER STRUCTURED OUTPUT PROCESSING
-                            logger.log("lore_keeper_output", f"Received Lore Keeper output: {text_chunk[:500]}...")
-                            await _process_lore_keeper_output(ctx.story_id, text_chunk, ctx.websocket)
+                            # Lore Keeper uses tool calls (update_bible) to write to DB directly.
+                            # Text events here are just status summaries, not structured JSON.
+                            logger.log("lore_keeper_output", f"[lore_keeper] {text_chunk[:500]}")
                         else:
                             # Log research agent output for debugging but don't send to user
                             logger.log("research_output", f"[{event_author}] {text_chunk[:200]}...")
@@ -380,12 +380,41 @@ async def _process_lore_keeper_output(story_id: str, text_chunk: str, websocket=
     """Parse and apply the Lore Keeper's LoreKeeperOutput JSON structured output.
 
     The Lore Keeper outputs structured data that is converted to WorldBible format.
+    Uses lenient parsing: required fields that are missing get safe defaults so
+    partial output still results in as many Bible updates as possible.
     """
     try:
         from src.schemas import LoreKeeperOutput
         from src.utils.lore_keeper_processor import apply_lore_keeper_output
 
         output_json = json.loads(text_chunk)
+
+        # Lenient parse: fill missing required fields with safe defaults
+        # so partial LLM output still produces Bible updates
+        _DEFAULTS = {
+            "character_name": "", "character_archetype": "",
+            "character_status": {}, "character_powers": {},
+            "power_origins_sources": [], "canon_timeline_events": [],
+            "world_state_characters": {}, "world_state_locations": {},
+            "world_state_factions": {}, "world_state_territory_map": {},
+            "meta_universes": [], "meta_genre": "", "meta_theme": "",
+            "meta_story_start_date": "",
+            "knowledge_meta_knowledge_forbidden": [],
+            "knowledge_common_knowledge": [],
+            "character_voices": {}, "character_sheet_relationships": {},
+            "character_sheet_knowledge": [],
+            "canon_character_integrity_protected": [],
+            "canon_jobber_prevention_rules": [],
+            "knowledge_character_secrets": {},
+            "knowledge_character_limits": {},
+            "upcoming_canon_events": [], "power_interactions": [],
+            "world_state_magic_system": {},
+            "world_state_entity_aliases": {}, "summary": "",
+        }
+        for key, default in _DEFAULTS.items():
+            if key not in output_json:
+                output_json[key] = default
+
         output = LoreKeeperOutput(**output_json)
 
         result = await apply_lore_keeper_output(story_id, output)

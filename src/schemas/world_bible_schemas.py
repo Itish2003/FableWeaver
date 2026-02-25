@@ -461,151 +461,149 @@ class LoreKeeperOutput(GeminiCompatibleModel):
     """
     model_config = ConfigDict(extra="forbid")  # Gemini doesn't support additionalProperties
 
-    # Character Sheet (MANDATORY)
+    # ── Character Sheet (ALL REQUIRED) ──────────────────────────────────────
     character_name: str = Field(
         ...,
-        description="The protagonist's name (e.g., 'Tatsuya Shiba')"
+        description="The protagonist's full name (e.g., 'Kudou Kageaki')"
     )
     character_archetype: str = Field(
         ...,
         description="Brief archetype (e.g., 'The Irregular / God of Destruction')"
     )
     character_status: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Initial status object with health, mental_state, power_level, etc."
+        ...,
+        description="REQUIRED. Initial status: {health: str, mental_state: str, power_level: str, location: str}. Must have at least health and power_level."
     )
     character_powers: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Dict of power names → descriptions (enforced format, not strings)"
+        ...,
+        description="REQUIRED. Dict of power names to descriptions. Example: {\"Cursed Spirit Manipulation\": \"Absorb and command spirits\", \"Ten Shadows\": \"Shadow-bound shikigami summoning\"}. Must list ALL protagonist powers."
     )
 
-    # Power Origins (MANDATORY first source)
+    # ── Power Origins (REQUIRED — at least one source) ────────────────────
     power_origins_sources: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="List of PowerOrigin objects with canon_techniques, combat_style, signature_moves"
+        ...,
+        description="REQUIRED. At least 1 power source. Each: {name, power_name, source_universe, canon_techniques: [{name, description, power_cost}], combat_style, signature_moves: [], limitations, weaknesses_and_counters: []}. This is the MOST IMPORTANT section."
     )
 
-    # Canon Timeline Events
+    # ── Canon Timeline Events (REQUIRED) ──────────────────────────────────
     canon_timeline_events: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Dated canonical events with date, event, universe, importance, status"
+        ...,
+        description="REQUIRED. At least 5 dated events. Each: {date: str, event: str, universe: str, importance: 'critical'|'major'|'minor', status: 'upcoming'|'occurred'}. Include the major arcs/incidents from the source material."
     )
 
-    # World State Updates
+    # ── World State (ALL REQUIRED) ────────────────────────────────────────
     world_state_characters: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Characters and their details (name, aliases, powers, relationships)"
+        ...,
+        description="REQUIRED. At least 5 major characters. {CharName: {role, affiliation, powers, threat_level, relationship_to_protagonist}}."
     )
     world_state_locations: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Locations with descriptions, controlled_by, key_features"
+        ...,
+        description="REQUIRED. At least 3 locations. {LocationName: {description, controlled_by, key_features}}."
     )
     world_state_factions: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Factions/organizations with members, hierarchy, disposition"
+        ...,
+        description="REQUIRED. At least 2 factions. {FactionName: {description, members, hierarchy, disposition_to_protagonist}}."
     )
     world_state_territory_map: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Quick reference of faction territory control"
+        ...,
+        description="REQUIRED. Quick reference: {area_name: controlling_faction}."
     )
 
-    # Metadata
+    # ── Metadata (REQUIRED) ───────────────────────────────────────────────
     meta_universes: List[str] = Field(
-        default_factory=list,
-        description="List of universes involved (e.g., ['Irregular at Magic High School', 'Wormverse'])"
+        ...,
+        description="REQUIRED. List of universes (e.g., ['Irregular at Magic High School', 'Jujutsu Kaisen'])"
     )
     meta_genre: str = Field(
-        default="",
-        description="Inferred genre (e.g., 'Urban Fantasy', 'Superhero Drama')"
+        ...,
+        description="REQUIRED. Genre (e.g., 'Dark Urban Fantasy')"
     )
     meta_theme: str = Field(
-        default="",
-        description="Inferred theme/central conflict"
+        ...,
+        description="REQUIRED. Central theme/conflict"
     )
     meta_story_start_date: str = Field(
-        default="",
-        description="Story start date in 'YYYY-MM-DD' or 'Month YYYY' format"
+        ...,
+        description="REQUIRED. Story start date (e.g., 'April 2095')"
     )
 
-    # Knowledge Boundaries
+    # ── Knowledge Boundaries (REQUIRED) ───────────────────────────────────
     knowledge_meta_knowledge_forbidden: List[str] = Field(
-        default_factory=list,
-        description="Concepts/facts characters don't know (e.g., 'Shards', 'Entities')"
+        ...,
+        description="REQUIRED. At least 3 items. Concepts characters must NEVER know (meta-knowledge from other universes, reader-only info)."
     )
     knowledge_common_knowledge: List[str] = Field(
-        default_factory=list,
-        description="Public facts everyone in-universe knows"
+        ...,
+        description="REQUIRED. At least 3 items. Public facts everyone in-universe knows."
     )
 
-    # Character Voices (populated at init for key characters)
+    # ── Character Voices (REQUIRED for key characters) ────────────────────
     character_voices: Dict[str, Dict[str, str]] = Field(
-        default_factory=dict,
-        description="Character voice profiles: {CharName: {speech_patterns, vocabulary_level, verbal_tics, emotional_tells, example_dialogue}}"
+        ...,
+        description="REQUIRED. At least 3 characters. {CharName: {speech_patterns, vocabulary_level, verbal_tics, emotional_tells, example_dialogue}}."
     )
 
-    # Character Sheet - Relationships (OC's initial relationship network)
+    # ── Character Relationships (REQUIRED) ────────────────────────────────
     character_sheet_relationships: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Protagonist's relationships: {CharName: {type, relation, trust, dynamics, knows_secret_identity, living_situation}}"
+        ...,
+        description="REQUIRED. At least 3 relationships. {CharName: {type, relation, trust: 1-10, dynamics, knows_secret_identity: bool}}."
     )
 
-    # Character Sheet - Starting Knowledge
+    # ── Character Starting Knowledge (REQUIRED) ──────────────────────────
     character_sheet_knowledge: List[str] = Field(
-        default_factory=list,
-        description="What the protagonist knows at story start (plot-relevant facts, world knowledge)"
+        ...,
+        description="REQUIRED. At least 5 items. What the protagonist knows at story start."
     )
 
-    # Canon Character Integrity - Anti-Worfing rules
+    # ── Canon Character Integrity / Anti-Worfing (REQUIRED) ──────────────
     canon_character_integrity_protected: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Protected characters with minimum_competence, signature_moments, anti_worf_notes"
+        ...,
+        description="REQUIRED. At least 3 protected characters. Each: {name, minimum_competence, signature_moments: [], anti_worf_notes}."
     )
-
-    # Canon Character Integrity - Jobber prevention general rules
     canon_jobber_prevention_rules: List[str] = Field(
-        default_factory=list,
-        description="General anti-Worfing rules that apply universe-wide (e.g., 'S-class characters cannot be defeated by mundane attacks')"
+        ...,
+        description="REQUIRED. At least 3 rules preventing powerful characters from being trivialized."
     )
 
-    # Knowledge Boundaries - Character Secrets
+    # ── Character Secrets (REQUIRED) ──────────────────────────────────────
     knowledge_character_secrets: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Per-character secrets: {CharName: {secret, known_by: [], absolutely_hidden_from: []}}"
+        ...,
+        description="REQUIRED. At least 2 characters with secrets. {CharName: {secret: str, known_by: [], absolutely_hidden_from: []}}."
     )
 
-    # Knowledge Boundaries - Character Knowledge Limits
+    # ── Character Knowledge Limits (REQUIRED) ─────────────────────────────
     knowledge_character_limits: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Per-character knowledge: {CharName: {knows: [], doesnt_know: [], suspects: []}}"
+        ...,
+        description="REQUIRED. At least 3 characters. {CharName: {knows: [], doesnt_know: [], suspects: []}}."
     )
 
-    # Upcoming Canon Events (events the story should address)
+    # ── Upcoming Canon Events (REQUIRED) ──────────────────────────────────
     upcoming_canon_events: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Canon events approaching the story start date with integration notes"
+        ...,
+        description="REQUIRED. At least 3 upcoming events the story must address. Each: {date, event, importance, integration_notes}."
     )
 
-    # Power Interactions (crossover power synergies)
+    # ── Power Interactions (REQUIRED for crossover stories) ───────────────
     power_interactions: List[Dict[str, str]] = Field(
-        default_factory=list,
-        description="How powers from different sources might interact or conflict"
+        ...,
+        description="REQUIRED. How powers from different sources interact. Each: {source_a, source_b, interaction, notes}."
     )
 
-    # World State - Magic System rules
+    # ── Magic System Rules (REQUIRED) ─────────────────────────────────────
     world_state_magic_system: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Power system rules per universe: {UniverseName: {system_name, core_rules, limitations, power_scaling}}"
+        ...,
+        description="REQUIRED. At least 1 system. {UniverseName: {system_name, core_rules, limitations, power_scaling}}."
     )
 
-    # World State - Entity Aliases
+    # ── Entity Aliases (REQUIRED) ─────────────────────────────────────────
     world_state_entity_aliases: Dict[str, List[str]] = Field(
-        default_factory=dict,
-        description="Character name variants: {canonical_name: [alias1, alias2, ...]}"
+        ...,
+        description="REQUIRED. At least 5 characters. {canonical_name: [alias1, alias2]}."
     )
 
-    # Summary
+    # ── Summary (REQUIRED) ────────────────────────────────────────────────
     summary: str = Field(
-        default="",
-        description="Brief summary of what was consolidated and why"
+        ...,
+        description="REQUIRED. 2-3 sentence summary of what was consolidated from the research data."
     )
 

@@ -76,6 +76,8 @@ class StorySetupConfig(BaseModel):
     research_focus: List[str] = Field(default_factory=list)
     power_limitations: str = Field(default="")
     user_context: str = Field(default="")
+    # Setup wizard Q&A conversation (questions + user answers)
+    setup_conversation: List[Dict[str, str]] = Field(default_factory=list)
 
 
 # ============================================================================
@@ -382,6 +384,8 @@ async def confirm_setup(config: StorySetupConfig) -> Dict[str, str]:
             "research_focus": config.research_focus,
             "power_limitations": config.power_limitations,
             "user_intent": config.user_context,
+            # Setup wizard Q&A conversation — user's clarifications for the init pipeline
+            "setup_conversation": config.setup_conversation,
         })
 
         bible = WorldBible(

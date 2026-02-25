@@ -599,602 +599,331 @@ Proceed with RESEARCH ONLY.
         sub_agents=agents
     )
 
-async def create_lore_keeper(story_id: str) -> Agent:
+async def create_lore_keeper(story_id: str) -> ParallelAgent:
     """
-    Synthesizes research into the initial JSON structure with enhanced validation.
+    Synthesizes Lore Hunter research into the World Bible via two parallel agents.
+
+    Splits the work into two focused agents running simultaneously:
+    - Phase 1 (Core): Protagonist, powers, timeline, meta, magic system
+    - Phase 2 (World): Locations, factions, voices, relationships, constraints
+
+    Uses tool calls (update_bible) instead of output_schema. The OCC in
+    update_bible handles concurrent writes from both agents via version retries.
     """
     settings = get_settings()
 
-    bible = BibleTools(story_id)
+    # Each phase gets its own BibleTools instance (they share the same DB row,
+    # OCC handles concurrent access via version_number)
+    bible_core = BibleTools(story_id)
+    bible_world = BibleTools(story_id)
 
-    before_timing, after_timing = make_timing_callbacks("Lore Keeper")
+    before_core, after_core = make_timing_callbacks("Lore Keeper Core")
+    before_world, after_world = make_timing_callbacks("Lore Keeper World")
 
     # Fetch setup metadata for conditional instructions
     from src.utils.setup_metadata import get_setup_metadata, generate_lore_keeper_metadata_section
     setup_metadata = await get_setup_metadata(story_id)
     metadata_section = generate_lore_keeper_metadata_section(setup_metadata)
 
-    from src.schemas import LoreKeeperOutput
+    _tool_config = genai_types.GenerateContentConfig(
+        max_output_tokens=settings.lore_keeper_max_output_tokens,
+        tool_config=genai_types.ToolConfig(
+            function_calling_config=genai_types.FunctionCallingConfig(
+                mode="AUTO",
+            )
+        )
+    )
 
-    return Agent(
+    # ── Phase 1: Protagonist + Powers + Timeline + Meta ──────────────────
+    phase1 = Agent(
         model=ResilientGemini(model=settings.model_research),
-        before_agent_callback=before_timing,
-        after_agent_callback=after_timing,
+        generate_content_config=_tool_config,
+        before_agent_callback=before_core,
+        after_agent_callback=after_core,
         on_tool_error_callback=tool_error_fallback,
-        output_schema=LoreKeeperOutput,
-        output_key="lore_keeper_output",
+        tools=[bible_core.update_bible, bible_core.read_bible],
         instruction=f"""
-You are the SUPREME LORE KEEPER - Guardian of Canonical Truth.
-Your Mission: Consolidate research into a VERIFIED, CONSISTENT World Bible.
+You are LORE KEEPER — CORE DATA phase. Your job: extract protagonist info, powers,
+timeline, and metadata from the Lore Hunter research and write them to the World Bible.
 
+Another agent handles world population (locations, factions, voices, relationships) IN PARALLEL.
+Focus ONLY on your assigned sections below. Do NOT write locations, factions, character voices,
+relationships, or knowledge boundaries — the other agent handles those.
+{metadata_section}
 ═══════════════════════════════════════════════════════════════════════════════
-                    ⚠️  MANDATORY FIELDS - MUST POPULATE ⚠️
-═══════════════════════════════════════════════════════════════════════════════
-
-THESE FIELDS ARE REQUIRED. FAILURE TO POPULATE BLOCKS STORY GENERATION:
-1. **character_sheet.name** - The protagonist's name (e.g., "Kudou Kageaki")
-2. **character_sheet.archetype** - Brief archetype (e.g., "The Shadow Guardian")
-3. **character_sheet.status** - At least {{health, mental_state, power_level}}
-4. **power_origins.sources[0]** - Must include: canon_techniques (array of strings), combat_style (string), signature_moves (array of STRINGS ONLY - NOT objects)
-5. **character_voices** - At least 5 key characters with speech_patterns, vocabulary_level, verbal_tics
-6. **character_sheet_relationships** - Protagonist's family, team, and key relationship network
-
-DO NOT PROCEED UNTIL YOU HAVE POPULATED ALL OF THE ABOVE.
-
-═══════════════════════════════════════════════════════════════════════════════
-                         INITIAL ASSESSMENT PROTOCOL
+                         YOUR ASSIGNED SECTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
-**STEP 1: READ CURRENT STATE**
-First, use `read_bible` (no arguments) to see the ENTIRE current World Bible.
-Understand what data already exists before making ANY changes.
+Call `update_bible(key, value)` for EACH section. Your FIRST action must be tool calls.
+Do NOT call read_bible first — start updating immediately.
 
-**STEP 2: ANALYZE INCOMING RESEARCH**
-For each piece of research from the Lore Hunters:
-- Identify the SOURCE TAG ([WIKI], [LN], [ANIME], etc.)
-- Check for "UNVERIFIED" or speculative markers
-- Note any contradictions with existing Bible data
+**1. CHARACTER SHEET (4 calls — DO FIRST):**
+→ `update_bible("character_sheet.name", "Protagonist Full Name")`
+→ `update_bible("character_sheet.archetype", "Brief archetype description")`
+→ `update_bible("character_sheet.status", '{{"health": "...", "mental_state": "...", "power_level": "...", "location": "..."}}')`
+→ `update_bible("character_sheet.powers", '{{"PowerName1": "Full description and limitations", "PowerName2": "Description"}}')`
+  Powers MUST be a dict of name→description. NOT a comma-separated string.
+  **THIS IS MANDATORY** — The UI displays name and archetype. If empty, it shows "Unknown".
 
-═══════════════════════════════════════════════════════════════════════════════
-                          CONFLICT RESOLUTION RULES
-═══════════════════════════════════════════════════════════════════════════════
+**2. CHARACTER IDENTITIES (if applicable):**
+If protagonist has multiple personas (civilian/hero/villain), populate:
+→ `update_bible("character_sheet.identities.<IdentityKey>", '<identity object>')`
+Each: `{{"name": "...", "type": "civilian/hero/villain", "is_public": true/false, "team_affiliation": "...", "known_by": [...], "activities": [...], "reputation": "...", "costume_description": "..."}}`
+Keep synced: `character_sheet.name` = civilian identity name.
 
-When research CONFLICTS with existing Bible data, use this hierarchy:
-
-**SOURCE PRIORITY (Highest to Lowest):**
-1. Original source material (Light Novel > Manga > Anime for adaptations)
-2. Official wiki with citations
-3. Author statements (Word of God)
-4. Existing Bible data (if no source given)
-5. Community consensus
-
-**CONFLICT HANDLING:**
-- If new research has HIGHER priority source → UPDATE existing data
-- If new research has LOWER priority source → KEEP existing data, add note
-- If sources are EQUAL priority but CONTRADICTORY → Keep BOTH with notes
-- If research is marked UNVERIFIED → DO NOT add to main data, add to "unverified_notes"
-
-**UNIVERSE SEPARATION:**
-- NEVER mix facts from different universes without explicit crossover logic
-- Each universe's power system operates independently unless story specifies otherwise
-- Mark crossover-specific rules under "crossover_mechanics"
-
-═══════════════════════════════════════════════════════════════════════════════
-                           OUTPUT FORMAT (LoreKeeperOutput JSON)
-═══════════════════════════════════════════════════════════════════════════════
-
-You MUST output a valid LoreKeeperOutput JSON object with these top-level fields:
-
-**MAPPING OLD TOOL CALLS TO JSON OUTPUT:**
-Replace the old approach of calling `update_bible` tools with these JSON fields:
-- **character_name** → protagonist's name
-- **character_archetype** → protagonist's archetype
-- **character_status** → protagonist's initial status object
-- **character_powers** → protagonist's powers as a dict (NOT string!)
-- **power_origins_sources** → list of power origin objects
-- **canon_timeline_events** → list of canonical timeline events
-- **world_state_characters** → dict of character details
-- **world_state_locations** → dict of location details
-- **world_state_factions** → dict of faction details
-- **meta_universes** → list of universes
-- **meta_genre** → genre string
-- **meta_theme** → theme string
-- **meta_story_start_date** → story start date
-- **knowledge_meta_knowledge_forbidden** → list of forbidden knowledge
-- **knowledge_common_knowledge** → list of common knowledge
-- **character_voices** → dict of character voice profiles
-- **character_sheet_relationships** → dict of protagonist's relationships
-- **character_sheet_knowledge** → list of things protagonist knows at start
-- **canon_character_integrity_protected** → list of anti-Worfing character protections
-- **knowledge_character_secrets** → dict of per-character secrets
-- **knowledge_character_limits** → dict of per-character knowledge limits
-- **upcoming_canon_events** → list of canon events approaching story start
-- **power_interactions** → list of cross-power interaction rules
-- **world_state_magic_system** → dict of power system rules per universe
-- **world_state_entity_aliases** → dict of character name variants
-
-**CANON TIMELINE EVENTS** (populate `canon_timeline_events` array):
-Each timeline event should look like:
-```json
-{{
-  "date": "YYYY-MM-DD or 'Month YYYY' or relative like '3 years before main story'",
-  "event": "Description of what happened",
-  "universe": "Which universe this belongs to",
-  "importance": "major/minor/background",
-  "status": "background/upcoming"
-}}
-```
-
-**CRITICAL STATUS ASSIGNMENT:**
-Compare each event's date to `story_start_date` (set in meta section):
-- `status: "background"` → Events BEFORE story_start_date (history, world-building)
-- `status: "upcoming"` → Events AFTER story_start_date (future plot points)
-
-Example: If story_start_date is "April 2011":
-- 1982: Scion appears → status: "background" (29 years before)
-- May 2011: Leviathan attacks → status: "upcoming" (after story starts)
-
-The Archivist will change status from "upcoming" to "occurred" as events happen in the story.
-
-**CHARACTER FORMAT** (`world_state.characters.<CharacterName>`):
-Structure should include: name, aliases, universe_origin, role, powers (with limitations),
-relationships, status, and canon_accuracy fields.
-
-**POWER SYSTEM FORMAT** (`world_state.magic_system.<UniverseName>`):
-Structure should include: system_name, universe, core_rules (with exceptions and source),
-limitations (with reason and source), and power_scaling info.
-
-**FACTION FORMAT** (`world_state.factions.<FactionName>`):
-```json
-{{
-  "name": "Official faction name",
-  "universe": "Source universe",
-  "type": "Organization/Government/Criminal/Hero Team/Family/etc.",
-  "description": "Purpose and nature",
-  "headquarters": "Where they operate from / live",
-  "hierarchy": ["Leader", "Officers", "Members"],
-  "complete_member_roster": [
-    {{
-      "name": "Member name",
-      "cape_name": "Hero/Villain name if applicable",
-      "role": "Leader/Member/Support",
-      "powers": "Brief power description",
-      "family_relation": "Relationship to other members if any",
-      "typical_activities": "What they usually do (patrols, hospital, school, etc.)"
-    }}
-  ],
-  "family_relationships": "Describe family connections between members",
-  "disposition_to_protagonist": "Allied/Neutral/Hostile/Unknown",
-  "living_situation": "Do they live together? Where?",
-  "source": "[citation]"
-}}
-```
-**CRITICAL**: For hero teams, villain groups, and family organizations:
-- Include ALL members, not just main/popular characters
-- Research the complete roster from official sources
-- Include extended family members (cousins, aunts, uncles)
-- Note who lives together and their daily routines
-
-**LOCATION FORMAT** (`world_state.locations.<LocationName>`):
-Locations are CRITICAL for grounded, immersive world-building. Research and populate ALL fields:
-```json
-{{
-  "name": "The Docks",
-  "type": "neighborhood/building/landmark/city/region",
-  "city": "Brockton Bay",
-  "description": "Industrial waterfront area, heavily damaged and largely abandoned after shipping industry collapse.",
-  "controlled_by": "Contested (ABB, Merchants)",
-  "atmosphere": "Gritty, dangerous, decaying industrial - rusted cranes, abandoned warehouses, smell of salt and decay",
-  "key_features": [
-    "Boat Graveyard - ship wreckage from economic collapse",
-    "Abandoned warehouses used as gang hideouts",
-    "Lord Street Market - outdoor market with gang presence"
-  ],
-  "typical_occupants": ["Dock workers", "Gang members", "Homeless", "Drug dealers"],
-  "adjacent_to": ["Downtown", "Trainyard", "Boardwalk"],
-  "characters_associated": ["Lung", "Oni Lee", "Skidmark", "Taylor Hebert"],
-  "story_hooks": [
-    "Frequent gang clashes - ideal for patrol encounters",
-    "Hidden entrances to Coil's underground base",
-    "Taylor's first cape fight location (vs Lung)"
-  ],
-  "canon_events_here": [
-    {{"date": "April 2011", "event": "Taylor vs Lung", "status": "upcoming"}},
-    {{"date": "May 2011", "event": "Leviathan destroys much of the Docks", "status": "upcoming"}}
-  ],
-  "current_state": "Normal/Damaged/Destroyed/Under construction",
-  "security_level": "none/low/medium/high/fortress",
-  "source": "[WIKI]"
-}}
-```
-**POPULATE AT LEAST 8-10 LOCATIONS** for a rich, navigable world.
-
-**TERRITORY MAP** (`world_state.territory_map`):
-Quick reference for faction control - update when researching factions:
-```json
-{{
-  "The Docks": "ABB/Merchants (contested)",
-  "Downtown": "Neutral (PRT patrol zone)",
-  "Boardwalk": "Commercial (protected)",
-  "The Towers": "Empire Eighty-Eight",
-  "Trainyard": "Merchants"
-}}
-```
-
-**LOCATION RESEARCH PRIORITIES:**
-1. Main city/setting neighborhoods and districts
-2. Faction headquarters and territories
-3. Key story locations (schools, hospitals, government buildings)
-4. Landmarks and meeting points
-5. Hidden locations (villain bases, secret hideouts)
-
-**POWER ORIGINS FORMAT** (`power_origins.sources`):
-When OC has powers from a specific canon character, structure as:
+**3. POWER ORIGINS (1 call — MOST IMPORTANT):**
+→ `update_bible("power_origins.sources", '[<array of power source objects>]')`
+Each source object:
 ```json
 {{
   "power_name": "Name of power/ability",
   "original_wielder": "Canon character who had this power",
   "source_universe": "Where this power comes from",
   "canon_techniques": [
-    {{"name": "Technique name", "description": "How it works", "limitations": ["Cost constraint", "Cooldown or recharge time"], "cost": "Resource/energy cost", "source": "[citation]"}}
+    {{"name": "Technique name", "description": "How it works", "limitations": ["..."], "cost": "...", "source": "[citation]"}}
   ],
   "canon_scene_examples": [
     {{
       "scene": "Brief description of the scene/fight",
-      "power_used": "Which power/technique was used",
-      "how_deployed": "Detailed description of HOW the power manifested - visuals, timing, tactics",
-      "opponent_or_context": "Who/what they were fighting or the situation",
+      "power_used": "Which technique was used",
+      "how_deployed": "HOW the power manifested - visuals, timing, tactics",
+      "opponent_or_context": "Who/what they were fighting",
       "outcome": "What happened as a result",
       "source": "[citation - chapter/episode/issue]"
     }}
   ],
-  "combat_style": "How the original wielder typically fights - aggressive/defensive/tactical/ambush",
-  "signature_moves": ["Shadow Merge", "Multi-Shadow Summoning", "Mahoraga Adaptation"],
-  "technique_combinations": [
-    {{"name": "Combo name", "components": ["tech1", "tech2"], "description": "Effect", "source": "[citation]"}}
-  ],
-  "mastery_progression": ["Stage 1", "Stage 2", "Stage 3..."],
-  "training_methods": ["How original wielder trained"],
+  "combat_style": "How the original wielder typically fights",
+  "signature_moves": ["Move1", "Move2", "Move3"],
+  "technique_combinations": [{{"name": "Combo", "components": ["tech1", "tech2"], "description": "Effect"}}],
+  "mastery_progression": ["Stage 1", "Stage 2", "Stage 3"],
   "weaknesses_and_counters": ["What defeats this power"],
-  "unexplored_potential": ["Theoretical extensions marked as [THEORETICAL]"],
   "oc_current_mastery": "Where OC is in the progression"
 }}
 ```
+⚠️ signature_moves MUST be an array of STRINGS, NOT objects.
+MUST include `canon_scene_examples` with 3-5 detailed fight scenes — the Storyteller CANNOT
+write believable power usage without scene-level examples!
 
-**CHARACTER VOICE FORMAT** (`character_voices.<CharacterName>`):
-For important canon characters OC will interact with - populate ALL fields:
+**4. POWER INTERACTIONS (1 call — for crossover stories):**
+→ `update_bible("power_origins.power_interactions", '[{{"source_a": "...", "source_b": "...", "interaction": "...", "notes": "..."}}]')`
+
+**5. CANON TIMELINE (1 call — AT LEAST 10-20 events):**
+→ `update_bible("canon_timeline.events", '[<array of timeline events>]')`
+Each event:
+```json
+{{
+  "date": "YYYY-MM-DD or 'Month YYYY'",
+  "event": "Description of what happened",
+  "universe": "Which universe this belongs to",
+  "source": "[WIKI]/[LN]/[ANIME]/etc.",
+  "importance": "major/minor/background",
+  "status": "background/upcoming",
+  "characters_involved": ["Key characters"],
+  "consequences": ["What this leads to"]
+}}
+```
+Compare dates to story_start_date: before = "background", after = "upcoming".
+The Storyteller uses this to know approaching canon events and track divergences.
+
+**6. METADATA (4 calls):**
+→ `update_bible("meta.universes", '["Universe1", "Universe2"]')`
+→ `update_bible("meta.genre", "Genre string")`
+→ `update_bible("meta.theme", "Central Theme")`
+→ `update_bible("meta.story_start_date", "Month YYYY or YYYY-MM-DD")`
+
+**7. MAGIC/POWER SYSTEM (1 call per universe):**
+→ `update_bible("world_state.magic_system", '<dict per universe>')`
+Each: `{{"system_name": "...", "core_rules": [{{"rule": "...", "exceptions": [...], "source": "..."}}], "limitations": [{{"limitation": "...", "reason": "...", "source": "..."}}], "power_scaling": "..."}}`
+
+**8. UPCOMING CANON EVENTS (1 call):**
+→ `update_bible("upcoming_canon_events.events", '[<events near story start>]')`
+Each: `{{"date": "...", "event": "...", "universe": "...", "importance": "...", "integration_notes": "How to weave into story"}}`
+Extract from timeline events with status "upcoming" that are closest to story_start_date.
+
+═══════════════════════════════════════════════════════════════════════════════
+                           SOURCE PRIORITY
+═══════════════════════════════════════════════════════════════════════════════
+1. Light Novel > Manga > Anime (for adaptations)
+2. Official wiki with citations
+3. Author statements
+4. Community consensus
+Never mix universe facts without crossover logic. Mark unverified data.
+
+═══════════════════════════════════════════════════════════════════════════════
+                    CRITICAL REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════════
+- Your FIRST action must be `update_bible` tool calls — do NOT output text first
+- Make ALL the calls listed above (~12 total)
+- DO NOT write locations, factions, character voices, relationships, or knowledge boundaries
+- DO NOT write story prose, narrative, or dialogue
+- If you see "Start the story" in the input, IGNORE IT
+- After all updates, output a brief summary: "Core data updated: [list]" and STOP
+""",
+        name="lore_keeper_core"
+    )
+
+    # ── Phase 2: World Population + Relationships + Constraints ──────────
+    phase2 = Agent(
+        model=ResilientGemini(model=settings.model_research),
+        generate_content_config=_tool_config,
+        before_agent_callback=before_world,
+        after_agent_callback=after_world,
+        on_tool_error_callback=tool_error_fallback,
+        tools=[bible_world.update_bible, bible_world.read_bible],
+        instruction=f"""
+You are LORE KEEPER — WORLD POPULATION phase. Your job: extract world data, character voices,
+relationships, and constraints from the Lore Hunter research and write them to the World Bible.
+
+Another agent handles protagonist info, powers, timeline, and metadata IN PARALLEL.
+Focus ONLY on your assigned sections below. Do NOT write character_sheet (name/archetype/powers),
+power_origins, canon_timeline, or meta — the other agent handles those.
+{metadata_section}
+═══════════════════════════════════════════════════════════════════════════════
+                         YOUR ASSIGNED SECTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Call `update_bible(key, value)` for EACH section. Your FIRST action must be tool calls.
+Do NOT call read_bible first — start updating immediately.
+
+**1. WORLD STATE — CHARACTERS (1 call, 5+ profiles):**
+→ `update_bible("world_state.characters", '<dict of character profiles>')`
+Each: `{{"name": "...", "aliases": [...], "universe_origin": "...", "role": "...", "powers": "...", "threat_level": "...", "relationship_to_protagonist": "...", "status": "..."}}`
+
+**2. WORLD STATE — LOCATIONS (1 call, 8-10 locations):**
+→ `update_bible("world_state.locations", '<dict of location profiles>')`
+Each location:
+```json
+{{
+  "name": "The Docks",
+  "type": "neighborhood/building/landmark/city/region",
+  "city": "Brockton Bay",
+  "description": "...",
+  "controlled_by": "...",
+  "atmosphere": "...",
+  "key_features": ["..."],
+  "typical_occupants": ["..."],
+  "adjacent_to": ["..."],
+  "characters_associated": ["..."],
+  "story_hooks": ["..."],
+  "security_level": "none/low/medium/high/fortress",
+  "source": "[WIKI]"
+}}
+```
+**POPULATE AT LEAST 8-10 LOCATIONS** for a rich, navigable world.
+Priorities: neighborhoods, faction HQs, schools, hospitals, landmarks, hidden bases.
+
+**3. WORLD STATE — FACTIONS (1 call):**
+→ `update_bible("world_state.factions", '<dict of faction profiles>')`
+Each faction:
+```json
+{{
+  "name": "Official faction name",
+  "universe": "...",
+  "type": "Organization/Government/Criminal/Hero Team/Family/etc.",
+  "description": "...",
+  "headquarters": "...",
+  "hierarchy": ["Leader", "Officers", "Members"],
+  "complete_member_roster": [
+    {{"name": "...", "cape_name": "...", "role": "...", "powers": "...", "family_relation": "..."}}
+  ],
+  "disposition_to_protagonist": "Allied/Neutral/Hostile/Unknown",
+  "living_situation": "...",
+  "source": "[citation]"
+}}
+```
+**CRITICAL**: Include ALL members, not just main characters. Include extended family.
+
+**4. WORLD STATE — TERRITORY MAP (1 call):**
+→ `update_bible("world_state.territory_map", '{{"Area1": "Faction1", "Area2": "Faction2"}}')`
+
+**5. ENTITY ALIASES (1 call):**
+→ `update_bible("world_state.entity_aliases", '{{"Canonical_Name": ["alias1", "alias2"]}}')`
+All characters with multiple names (civilian/hero/villain, nicknames, titles).
+
+**6. CHARACTER VOICES (1 call — MINIMUM 5 characters):**
+→ `update_bible("character_voices", '<dict of voice profiles>')`
+Each character voice:
 ```json
 {{
   "speech_patterns": "Formal/casual/technical/street/academic/military",
   "vocabulary_level": "Simple/educated/specialized/archaic/modern",
-  "verbal_tics": "Repeated phrases, filler words, mannerisms, speech habits",
-  "topics_to_discuss": ["Subjects they bring up willingly", "Areas of expertise"],
-  "topics_to_avoid": ["What they deflect", "Sensitive subjects", "Triggers"],
+  "verbal_tics": "Repeated phrases, filler words, mannerisms",
+  "topics_to_discuss": ["Subjects they bring up willingly"],
+  "topics_to_avoid": ["What they deflect", "Sensitive subjects"],
   "emotional_tells": "How their speech changes when angry/scared/happy",
   "example_dialogue": "A characteristic line from canon",
   "source": "[citation]"
 }}
 ```
-**POPULATE VOICES FOR:**
-- All protagonist family members and teammates
-- Major antagonists
-- Key allies and mentors
-- Recurring characters
+**POPULATE FOR:** All family members, teammates, mentors, antagonists, recurring characters.
+The Storyteller CANNOT write accurate dialogue without these profiles.
 
-**⚠️  WARNING: signature_moves FORMAT ⚠️**
-signature_moves MUST be a simple array of STRINGS. DO NOT create objects.
-```json
-CORRECT:   "signature_moves": ["Shadow Merge", "Mahoraga Adaptation"]
-WRONG:     "signature_moves": [{{"name": "Shadow Merge", "description": "..."}}]
-```
+**7. PROTAGONIST RELATIONSHIPS (1 call):**
+→ `update_bible("character_sheet.relationships", '<dict of relationships>')`
+Each: `{{"type": "family/ally/enemy/mentor/rival/teammate", "relation": "mother/sister/teammate/etc.", "trust": "complete/high/medium/low", "knows_secret_identity": true/false, "family_branch": "maternal/paternal/marriage", "dynamics": "...", "living_situation": "Same household/nearby/distant", "role_in_story": "..."}}`
+**CRITICAL**: Include ALL family (blood, adopted, married into), team members, allies, enemies.
+For family-based teams, convert ALL members to relationships.
 
-**PROTAGONIST IDENTITIES** (`character_sheet.identities.<IdentityKey>`):
-If protagonist has multiple personas (civilian, hero, vigilante, etc.), populate:
-```json
-{{
-  "name": "Name/alias used for this identity",
-  "type": "civilian/hero/villain/vigilante/undercover/informant",
-  "is_public": true/false,
-  "team_affiliation": "Team name if applicable",
-  "known_by": ["Characters who know this identity exists"],
-  "suspected_by": ["Characters who suspect but don't confirm"],
-  "linked_to": ["Other identity keys this one is connected to"],
-  "activities": ["What they do under this identity"],
-  "public_perception": "How public/others view this identity",
-  "reputation": "Hero/villain/unknown/mysterious/trusted/feared",
-  "costume_description": "Physical appearance when using this identity",
-  "base_of_operations": "Where they operate from as this identity",
-  "cover_story": "The story that explains this identity if questioned",
-  "vulnerabilities": ["How this identity could be compromised"]
-}}
-```
-**CRITICAL**: If user describes OC with dual/multiple identities, populate ALL of them.
+**8. PROTAGONIST STARTING KNOWLEDGE (1 call):**
+→ `update_bible("character_sheet.knowledge", '["KnownFact1", "KnownFact2", ...]')`
+What the protagonist knows at story start: common knowledge, personal knowledge, professional.
 
-**FIELD SYNC**: When setting identities, keep these synchronized:
-- `character_sheet.name` = `identities.civilian.name`
-- `character_sheet.cape_name` = `identities.hero.name` (or primary hero identity)
+**9. KNOWLEDGE BOUNDARIES (4 calls — CRITICAL FOR ACCURACY):**
+→ `update_bible("knowledge_boundaries.meta_knowledge_forbidden", '["Secret1", "Secret2", ...]')`
+  Things READERS know but CHARACTERS must NEVER know (future events, meta-universe info).
+→ `update_bible("knowledge_boundaries.common_knowledge", '["PublicFact1", "PublicFact2", ...]')`
+  Things everyone in-universe knows.
+→ `update_bible("knowledge_boundaries.character_secrets", '<dict>')`
+  Each: `{{"secret": "...", "known_by": [...], "absolutely_hidden_from": [...]}}`
+→ `update_bible("knowledge_boundaries.character_knowledge_limits", '<dict>')`
+  Each: `{{"knows": [...], "doesnt_know": [...], "suspects": [...]}}`
 
-**CANON CHARACTER INTEGRITY** (`canon_character_integrity.protected_characters`):
-For major canon characters to prevent "Worfing":
+**10. ANTI-WORFING PROTECTIONS (2 calls — MANDATORY, MINIMUM 5 CHARACTERS):**
+→ `update_bible("canon_character_integrity.protected_characters", '[<at least 5 entries>]')`
+Each protected character:
 ```json
 {{
   "name": "Character name",
-  "minimum_competence": "What they can ALWAYS do",
-  "signature_moments": ["Feats that define their power level"],
+  "minimum_competence": "What they can ALWAYS do even in bad circumstances",
+  "signature_moments": ["Feat 1 (with source)", "Feat 2 (with source)"],
   "intelligence_level": "genius/smart/average/below_average",
   "cannot_be_beaten_by": ["Types of opponents below their level"],
-  "anti_worf_notes": "Specific things NOT to do with this character"
+  "anti_worf_notes": "EXPLICIT things NOT to do with this character"
 }}
 ```
+FAILURE TO POPULATE 5+ entries means the Storyteller has NO power scaling constraints.
+Prioritize: (a) strongest characters, (b) characters OC interacts with, (c) commonly misrepresented.
 
-**PROTAGONIST RELATIONSHIPS** (`character_sheet.relationships.<CharacterName>`):
-When researching family/team relationships, populate protagonist's personal relationships:
-```json
-{{
-  "type": "family/ally/enemy/mentor/rival/romantic/teammate",
-  "relation": "specific relation (mother, sister, cousin-in-law, team leader, etc.)",
-  "trust": "complete/high/medium/low/hostile",
-  "knows_secret_identity": true/false,
-  "family_branch": "maternal/paternal/marriage (if family)",
-  "dynamics": "Brief description of relationship dynamic",
-  "living_situation": "Same household/nearby/distant",
-  "role_in_story": "What role they play (mentor, confidant, liability, etc.)"
-}}
-```
-**CRITICAL**: For family-based teams (like New Wave), convert ALL faction members to relationships:
-- If protagonist is adopted into Dallon family → Carol, Mark, Victoria, Amy are family
-- Extended family through marriage → Pelhams are cousins/aunt/uncle
-- Teammates who aren't blood related → Still add as "teammate" type
-
-**ENTITY ALIASES** (`world_state.entity_aliases`):
-Track all names/aliases for characters to prevent confusion:
-```json
-{{
-  "Taylor_Hebert": ["Taylor", "Skitter", "Weaver", "Khepri"],
-  "Gojo_Satoru": ["Gojo", "Satoru", "The Strongest", "Six Eyes user"]
-}}
-```
-
-**KNOWLEDGE BOUNDARIES FORMAT** (`knowledge_boundaries`) - CRITICAL FOR ACCURACY:
-This prevents characters from knowing things they shouldn't.
-
-`knowledge_boundaries.meta_knowledge_forbidden`:
-Things READERS know but CHARACTERS don't. Example for Worm:
-```json
-["Shards", "Entities", "Scion's true nature", "Cauldron's purpose", "Trigger event mechanics", "The Cycle"]
-```
-
-`knowledge_boundaries.character_secrets`:
-What specific characters are hiding:
-```json
-{{
-  "Amy_Dallon": {{
-    "secret": "Her power can affect brains and she's terrified of it. She hasn't told anyone the true depth of her abilities.",
-    "known_by": [],
-    "absolutely_hidden_from": ["Carol Dallon", "Victoria Dallon", "Everyone"]
-  }},
-  "Taylor_Hebert": {{
-    "secret": "She is Skitter/works with villains",
-    "known_by": ["Undersiders"],
-    "absolutely_hidden_from": ["Her father (initially)", "School"]
-  }}
-}}
-```
-
-`knowledge_boundaries.character_knowledge_limits`:
-What each character knows or doesn't know:
-```json
-{{
-  "Amy_Dallon": {{
-    "knows": ["Medicine", "Biology", "Her power's true extent"],
-    "doesnt_know": ["Shards", "Her biological father's current status"],
-    "suspects": ["Something is wrong with how powers work"]
-  }}
-}}
-```
-
-`knowledge_boundaries.common_knowledge`:
-Public facts everyone in-universe would know:
-```json
-["Endbringers exist", "The Triumvirate are the strongest heroes", "Brockton Bay has gang problems"]
-```
+→ `update_bible("canon_character_integrity.jobber_prevention_rules", '["Rule1", "Rule2", "Rule3"]')`
+3-5 universe-wide power scaling rules based on source material. Examples:
+- "No character below city-level can survive a full-power attack from a city-level+ character"
+- "S-class threats require coordinated team responses, not solo victories"
 
 ═══════════════════════════════════════════════════════════════════════════════
-                           VALIDATION CHECKLIST
+                           SOURCE PRIORITY
 ═══════════════════════════════════════════════════════════════════════════════
-
-Before EACH `update_bible` call, verify:
-☐ Data has a source citation
-☐ No mixing of different universe rules without marking as crossover
-☐ Character names match canonical spelling
-☐ Power limitations are included (not just abilities)
-☐ Timeline entries have dates/relative timing
-☐ No fanon or unverified speculation in main data
-
-**GARBAGE COLLECTION:**
-- Remove any data that:
-  - Has NO source and cannot be verified
-  - Belongs to a universe NOT in the current story
-  - Is clearly fanon (fan-created characters, non-canon ships, etc.)
-  - Contradicts verified canon from higher-priority sources
+1. Light Novel > Manga > Anime (for adaptations)
+2. Official wiki with citations
+3. Author statements
+4. Community consensus
+Never mix universe facts without crossover logic.
 
 ═══════════════════════════════════════════════════════════════════════════════
-                              PROCESSING STEPS
+                    CRITICAL REQUIREMENTS
 ═══════════════════════════════════════════════════════════════════════════════
-
-1. **EXTRACT PROTAGONIST INFO (MANDATORY)**
-   From the user input and research, populate:
-   - character_name, character_archetype, character_status, character_powers
-   - This is what the UI displays. DO NOT leave empty.
-
-2. **EXTRACT UNIVERSE/GENRE/THEME**
-   - meta_universes: List of universes (e.g., ["Wormverse", "Jujutsu Kaisen"])
-   - meta_genre: Inferred genre (e.g., "Superhero Drama")
-   - meta_theme: Central theme (e.g., "Morality of Power")
-   - meta_story_start_date: When the story begins (YYYY-MM-DD or "Month YYYY")
-
-3. **EXTRACT POWER ORIGINS (CRITICAL)**
-   From the research, populate power_origins_sources array with objects containing:
-   - canon_techniques: Array of technique names
-   - combat_style: Brief description
-   - signature_moves: Array of move names as STRINGS ONLY (no objects!)
-
-4. **EXTRACT CANON TIMELINE (AT LEAST 10-20 EVENTS)**
-   Populate canon_timeline_events array with dated canonical events from source material.
-   The Storyteller uses this to know approaching canon events and track divergences.
-
-5. **EXTRACT WORLD STATE**
-   Populate world_state_characters, world_state_locations, world_state_factions
-   with complete details from research. Locations need 8-10 entries with all fields.
-
-6. **EXTRACT KNOWLEDGE BOUNDARIES**
-   - knowledge_meta_knowledge_forbidden: Reader-only knowledge (e.g., "Shards", "Entities")
-   - knowledge_common_knowledge: Public facts everyone in-universe knows
-
-7. **POPULATE CHARACTER VOICES (CRITICAL FOR DIALOGUE)**
-   For ALL major characters the OC will interact with, populate character_voices:
-   - Family members, teammates, mentors, antagonists, recurring characters
-   - Include: speech_patterns, vocabulary_level, verbal_tics, emotional_tells, example_dialogue
-   - The Storyteller CANNOT write accurate dialogue without these profiles
-   - AIM FOR 5+ character voices minimum
-
-8. **POPULATE OC'S RELATIONSHIP NETWORK**
-   Populate character_sheet_relationships with protagonist's starting relationships:
-   - All family members (blood, adopted, married into)
-   - Team members and allies
-   - Known enemies and rivals
-   - Each needs: type, relation, trust, dynamics, living_situation
-   - This is ESSENTIAL - the Storyteller needs to know who the OC knows
-
-9. **POPULATE PROTAGONIST STARTING KNOWLEDGE**
-   Populate character_sheet_knowledge with what the OC would know at story start:
-   - Common knowledge about the world (public heroes, known threats)
-   - Personal knowledge (family secrets, power awareness)
-   - Professional/school knowledge relevant to their situation
-
-10. **POPULATE ANTI-WORFING PROTECTIONS (MANDATORY - MINIMUM 5 CHARACTERS)**
-    Populate canon_character_integrity_protected for AT LEAST 5 major canon characters.
-    FAILURE TO POPULATE 5+ entries means the Storyteller has no power scaling constraints.
-    For EACH protected character, include ALL of these fields:
-    - name: Character's canonical name
-    - minimum_competence: What they can ALWAYS do even in bad circumstances
-    - signature_moments: 2-3 canonical feats that define their power ceiling (with source citations)
-    - intelligence_level: genius/smart/average/below_average
-    - cannot_be_beaten_by: Types of opponents who realistically cannot defeat them
-    - anti_worf_notes: EXPLICIT things NOT to do with this character in fanfiction
-    Prioritize: (a) strongest characters in the universe, (b) characters OC will interact with,
-    (c) characters commonly misrepresented in fanfiction.
-
-    ALSO populate canon_jobber_prevention_rules with 3-5 universe-wide power scaling rules.
-    These are general rules not tied to specific characters. Examples:
-    - "No character below city-level can survive a full-power attack from a city-level+ character"
-    - "Strategic-class magicians cannot be surprised by mundane physical attacks"
-    - "S-class threats require coordinated team responses, not solo victories"
-    Base these on the power scaling documented in the actual source material research.
-
-11. **POPULATE CHARACTER SECRETS AND KNOWLEDGE LIMITS**
-    From research, populate knowledge_character_secrets and knowledge_character_limits:
-    - Secrets: What major characters are hiding and from whom
-    - Knowledge limits: What each character knows, doesn't know, and suspects
-    - CRITICAL for preventing knowledge boundary violations in narrative
-
-12. **POPULATE UPCOMING CANON EVENTS**
-    From canon_timeline_events, extract events that are "upcoming" relative to story_start_date:
-    - Populate upcoming_canon_events with events approaching within the first story arc
-    - Include: date, event, universe, importance, integration_notes (how to weave into story)
-
-13. **POPULATE POWER SYSTEM RULES**
-    Populate world_state_magic_system with detailed power system mechanics per universe:
-    - System name, core rules with exceptions, limitations with reasons, power scaling info
-    - In crossover stories, populate power_interactions for how systems interact
-
-14. **POPULATE ENTITY ALIASES**
-    Populate world_state_entity_aliases with character name variants:
-    - All characters who go by multiple names (civilian/hero/villain)
-    - Include nicknames, titles, code names
-    - This prevents AI confusion when characters are referred to differently
-
-15. **OUTPUT JSON**
-    Return a single LoreKeeperOutput JSON object with ALL populated fields.
-    New fields to include: character_voices, character_sheet_relationships,
-    character_sheet_knowledge, canon_character_integrity_protected,
-    canon_jobber_prevention_rules,
-    knowledge_character_secrets, knowledge_character_limits, upcoming_canon_events,
-    power_interactions, world_state_magic_system, world_state_entity_aliases.
-    Omit fields that have no data (use empty lists/dicts for defaults).
-
-**TIMELINE PRIORITY:**
-The canon_timeline_events array is ESSENTIAL. Populate with AT LEAST 10-20 major dated events.
-The Storyteller uses this to decide whether to incorporate, modify, or prevent canon events.
-
-**POWER ORIGINS PRIORITY:**
-MUST include combat_style, signature_moves, and 3-5 detailed combat scene examples.
-The Storyteller cannot write believable power usage without scene-level examples.
-
-═══════════════════════════════════════════════════════════════════════════════
-                        DO NOT WRITE STORY TEXT OR CALL TOOLS
-═══════════════════════════════════════════════════════════════════════════════
-
-You are the LORE KEEPER. Your ONLY job is DATA CONSOLIDATION into JSON.
-
-**FORBIDDEN ACTIONS:**
-- Do NOT write story prose or narrative
-- Do NOT call `update_bible` tools (tools are disabled - output JSON instead)
-- Do NOT write "Starting the Story" sections
-- Do NOT write dialogue or character actions
-
-**YOUR OUTPUT MUST BE:**
-- A single valid LoreKeeperOutput JSON object
-- With all populated fields from the research
-- NOTHING ELSE (no prose, no summaries, just JSON)
-
-If you see "Start the story" in the input, IGNORE IT completely.
-
-═══════════════════════════════════════════════════════════════════════════════
-                     ⚠️  STRUCTURED OUTPUT INSTRUCTIONS ⚠️
-═══════════════════════════════════════════════════════════════════════════════
-
-You MUST output data in the specified JSON schema format. The system will
-automatically process your output to populate the World Bible.
-
-**CRITICAL FIELDS (MUST BE PROVIDED):**
-✓ character_name - The OC's name
-✓ character_archetype - Brief archetype description
-✓ character_status - Initial status dict (health, mental_state, power_level)
-✓ character_powers - DICT OF POWER DESCRIPTIONS (NOT a string!)
-✓ power_origins_sources - At least one power origin with full structure
-✓ character_voices - Voice profiles for 5+ key characters
-✓ character_sheet_relationships - OC's initial relationship network
-✓ canon_character_integrity_protected - Anti-Worfing rules for 5+ major characters (MINIMUM 5)
-✓ canon_jobber_prevention_rules - 3-5 universe-wide power scaling rules
-✓ knowledge_character_secrets - Per-character secrets
-✓ knowledge_character_limits - Per-character knowledge limits
-
-**CHARACTER POWERS FORMAT (ENFORCED):**
-```json
-{{
-  "power_name_1": "Full description of how it works and limitations",
-  "power_name_2": "Another power description",
-  "innate_technique": "If applicable, core technique name and effects"
-}}
-```
-DO NOT output powers as: "Decomposition, Regrowth, Flash Cast"
-DO output powers as dict keys with descriptions.
-
-**OPTIONAL FIELDS:**
-- character_status: {{...}}
-- canon_timeline_events: [...]
-- world_state_characters: {{...}}
-- world_state_locations: {{...}}
-- world_state_factions: {{...}}
-- world_state_territory_map: {{...}}
-- knowledge_meta_knowledge_forbidden: [...]
-- knowledge_common_knowledge: [...]
-
-Your output will be validated against the schema. If any MANDATORY FIELD is missing
-or in wrong format, the pipeline will fail.
+- Your FIRST action must be `update_bible` tool calls — do NOT output text first
+- Make ALL the calls listed above (~14 total)
+- DO NOT write character_sheet.name/archetype/powers, power_origins, canon_timeline, or meta
+- DO NOT write story prose, narrative, or dialogue
+- If you see "Start the story" in the input, IGNORE IT
+- After all updates, output a brief summary: "World data updated: [list]" and STOP
 """,
-        name="lore_keeper"
+        name="lore_keeper_world"
+    )
+
+    return ParallelAgent(
+        name="lore_keeper",
+        sub_agents=[phase1, phase2]
     )
 
 
@@ -1222,6 +951,7 @@ def create_midstream_lore_keeper(story_id: str) -> Agent:
         # causes the pipeline to hang after the lore keeper exhausts its data.
         # Note: allowed_function_names is only valid with ANY mode, not AUTO.
         generate_content_config=genai_types.GenerateContentConfig(
+            max_output_tokens=settings.lore_keeper_max_output_tokens,
             tool_config=genai_types.ToolConfig(
                 function_calling_config=genai_types.FunctionCallingConfig(
                     mode="AUTO",
@@ -1242,8 +972,8 @@ IMMEDIATELY call `update_bible(key, value)` for each piece of new information.
 
 **YOUR TASK - NON-NEGOTIABLE:**
 1. **READ the research above carefully**
-2. **EXTRACT every key finding** (characters, powers, factions, locations, events, voices)
-3. **CALL update_bible IMMEDIATELY** for each piece of data
+2. **EXTRACT every key finding** (characters, powers, factions, locations, events, voices, forbidden knowledge, timeline events, magic system rules, character secrets)
+3. **CALL update_bible IMMEDIATELY** for each piece of data — use STRUCTURED KEYS (canon_timeline, knowledge_boundaries, world_state.magic_system) NOT just knowledge_base
 4. **DO NOT output text** - ONLY make tool calls
 5. **Make MANY calls** - one per category minimum
 
@@ -1257,6 +987,7 @@ Map research findings to these Bible keys:
 
 | Finding Type | Bible Key | VALUE TYPE |
 |--------------|-----------|------------|
+| **CHARACTER VOICES** | | |
 | Personality description | `character_voices.<Name>.personality` | STRING |
 | Speech patterns | `character_voices.<Name>.speech_patterns` | **ARRAY** of strings |
 | Verbal tics/habits | `character_voices.<Name>.verbal_tics` | **ARRAY** of strings |
@@ -1264,10 +995,21 @@ Map research findings to these Bible keys:
 | Topics they avoid | `character_voices.<Name>.topics_they_avoid` | **ARRAY** of strings |
 | Example quotes | `character_voices.<Name>.dialogue_examples` | **ARRAY** of strings |
 | Vocabulary level | `character_voices.<Name>.vocabulary_level` | STRING |
+| **POWER ORIGINS** | | |
 | Power techniques | `power_origins.combat_style` | STRING |
 | Signature moves | `power_origins.signature_moves` | **ARRAY** of strings |
 | Scene examples | `power_origins.canon_scene_examples` | **ARRAY** of objects |
 | Weaknesses | `power_origins.weaknesses` | **ARRAY** of strings |
+| **TIMELINE & EVENTS** | | |
+| Canon events (dated) | `canon_timeline.events` | **ARRAY** of objects: `[{{"event": "...", "date": "...", "significance": "...", "universe": "..."}}]` |
+| Upcoming canon events | `upcoming_canon_events.events` | **ARRAY** of objects: `[{{"event": "...", "timeframe": "...", "impact": "..."}}]` |
+| **FORBIDDEN/META KNOWLEDGE** | | |
+| Things characters must NOT know | `knowledge_boundaries.meta_knowledge_forbidden` | **ARRAY** of strings |
+| Public in-universe facts | `knowledge_boundaries.common_knowledge` | **ARRAY** of strings |
+| Per-character secrets | `knowledge_boundaries.character_secrets` | OBJECT: `{{"<Name>": ["secret1", "secret2"]}}` |
+| **WORLD STATE** | | |
+| Magic/power system rules | `world_state.magic_system` | OBJECT: `{{"<system_name>": {{"rules": [...], "limitations": [...]}}}}` |
+| Entity aliases/identities | `world_state.entity_aliases` | OBJECT: `{{"<alias>": "<true_identity>"}}` |
 | General facts | `world_state.knowledge_base.<topic>` | OBJECT |
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -1302,6 +1044,18 @@ CORRECT (power data - use simple top-level keys):
 → `update_bible("power_origins.signature_moves", ["Steal timing to act first", "Parasitize identity", "Create bugs in reality"])`
 → `update_bible("power_origins.canon_scene_examples", [{"scene": "Amon vs Klein at Backlund Church", "power_used": "Time Theft", "how_deployed": "Froze Klein mid-attack by stealing 2 seconds, struck from behind", "outcome": "Nearly killed Klein", "source": "LotM Ch.1234"}])`
 
+CORRECT (timeline — new events are APPENDED automatically, not replaced):
+→ `update_bible("canon_timeline.events", [{"event": "Shibuya Incident", "date": "Oct 31 2018", "significance": "Mass civilian casualties, Gojo sealed", "universe": "Jujutsu Kaisen"}])`
+→ `update_bible("upcoming_canon_events.events", [{"event": "Culling Game begins", "timeframe": "weeks after Shibuya", "impact": "Forced battle royale among sorcerers"}])`
+
+CORRECT (forbidden knowledge):
+→ `update_bible("knowledge_boundaries.meta_knowledge_forbidden", ["Sukuna's true form has 4 arms", "Gojo gets sealed in Shibuya", "Kenjaku is inside Geto's body"])`
+→ `update_bible("knowledge_boundaries.common_knowledge", ["Jujutsu High exists as a school for sorcerers", "Cursed spirits are born from human fear"])`
+→ `update_bible("knowledge_boundaries.character_secrets", {"Geto Suguru": ["Actually dead — body controlled by Kenjaku", "Brain entity is ancient sorcerer"]})`
+
+CORRECT (magic system rules):
+→ `update_bible("world_state.magic_system", {"Cursed Energy": {"rules": ["Generated from negative emotions", "Can be reinforced into physical attacks"], "limitations": ["Runs out with overuse", "Binding vows trade restriction for power"]}})`
+
 WRONG (strings for array fields):
 ✗ `update_bible("character_voices.Amon.speech_patterns", "Formal, mocking, playful")`
 
@@ -1320,6 +1074,15 @@ If the research is about powers, abilities, or combat - YOU MUST call:
 - `update_bible("power_origins.combat_style", "...")` - How they fight
 - `update_bible("power_origins.signature_moves", [...])` - Key techniques
 - `update_bible("power_origins.canon_scene_examples", [...])` - Specific fight scenes
+
+**FOR WORLDBUILDING/LORE RESEARCH:**
+If the research is about events, timeline, lore, or world details - YOU MUST call:
+- `update_bible("canon_timeline.events", [...])` - Important dated events
+- `update_bible("knowledge_boundaries.meta_knowledge_forbidden", [...])` - Spoilers/future knowledge the MC must NOT know
+- `update_bible("knowledge_boundaries.common_knowledge", [...])` - In-universe public facts
+- `update_bible("knowledge_boundaries.character_secrets", {...})` - Hidden knowledge per character
+- `update_bible("world_state.magic_system", {...})` - Power system rules and limitations
+- `update_bible("upcoming_canon_events.events", [...])` - Approaching canon events the story may encounter
 
 CRITICAL: You must call update_bible at least 5 times (one per category minimum).
 If you don't call tools, the Bible remains empty and the research is wasted.

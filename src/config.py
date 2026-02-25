@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     # Budget: ~3k tokens for tool calls (13 tools) + ~12k for chapter + ~1k for JSON metadata.
     storyteller_max_output_tokens: int = 24576
 
+    # Max output tokens for the Lore Keeper (init pipeline, tool-call based).
+    # Makes 20+ update_bible calls with rich JSON payloads — needs headroom for
+    # reasoning + tool call params + tool result processing across many turns.
+    lore_keeper_max_output_tokens: int = 65536
+
+    # Max output tokens for the Archivist (BibleDelta structured output).
+    archivist_max_output_tokens: int = 16384
+
     # Pipeline timeout in seconds (increased to 15 minutes for full research + generation)
     # Research phase: 1-3 mins (15 agents), Lore Keeper: 2-5 mins, Storyteller: 1-5 mins
     pipeline_timeout_seconds: int = 900

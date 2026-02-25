@@ -104,6 +104,7 @@ async def create_storyteller(story_id: str, model_name: str = None, universes: L
             bible.get_faction_overview,      # Faction dispositions and territory
             bible.validate_power_usage,      # Validates power/technique is documented
             bible.check_knowledge_compliance,
+            bible.search_lore,
             meta.trigger_research
         ],
         instruction=f"""
@@ -132,10 +133,25 @@ Timeline Context: {deviation}
    - `read_bible("knowledge_boundaries")` → **CRITICAL: Get what characters can/cannot know!**
    - `get_active_consequences()` → Get pending consequences and power debt to address
    - `get_divergence_ripples()` → Get active divergences and predicted butterfly effects
+   - `search_lore("<topic>")` → **Search the knowledge base for detailed lore, canon facts, power mechanics, timelines, and faction data gathered during research. Use this for ANY topic you need deeper context on (e.g. "cursed spirits", "Shibuya Incident", "magic system rules").**
+
+   **SYSTEM-INJECTED DATA (available in every request — no tool call needed):**
+   The system automatically injects FORBIDDEN KNOWLEDGE, CHARACTER SECRETS, UPCOMING CANON EVENTS,
+   and POWER COMBAT REFERENCE into every request. CHECK THIS DATA before writing.
+   These constraints are NON-NEGOTIABLE and override any creative impulse.
+   You will find these blocks labeled in your context — they are your FIRST LINE OF DEFENSE against
+   canon violations. Tools are your SECOND check. Both must agree before you write.
 
 2. **CHECK TIMELINE POSITION** (CRITICAL FOR CANON ALIGNMENT):
    - Use `check_timeline_position()` → Get current story date and timeline status
    - Use `get_upcoming_canon_events()` → See what canonical events are approaching
+   - The system injects UPCOMING CANON EVENTS into every request. CRITICAL events that are
+     imminent MUST be woven into this chapter — as a direct scene, a rumor characters hear,
+     or environmental foreshadowing.
+   - If an upcoming event's date matches or is within days of the current story date,
+     it MUST appear in the narrative. NO EXCEPTIONS.
+   - NEVER write a chapter where no canon events are acknowledged. At minimum,
+     foreshadow the nearest upcoming event.
 
 3. **EXTRACT PROTAGONIST INFO:**
    - Name (DO NOT assume - get from Bible)
@@ -290,6 +306,15 @@ trigger_research("Winslow High School Brockton Bay layout students")
    - NO power-ups without established canon basis
    - Cross-universe power interactions follow documented crossover_mechanics
 
+   **SYSTEM-INJECTED POWER COMBAT REFERENCE:**
+   The system injects combat_style, signature_moves, and weaknesses for each power source
+   into every request. USE THEM. Generic power descriptions are UNACCEPTABLE.
+   Every combat scene MUST reference specific named techniques from signature_moves.
+   Show WEAKNESSES being relevant — opponents who understand the power should exploit
+   documented counters. SCALING MUST BE CONSISTENT: If a power is documented as
+   "city-level", a single punch should not level a continent. If combat_style says
+   "tactical controller", do NOT write them as a brute-force fighter.
+
    **POWER ORIGINS USAGE (CRITICAL FOR OC POWERS):**
    When OC uses inherited powers, reference `power_origins.sources`:
    - Use ONLY techniques listed in `canon_techniques` or `signature_moves`
@@ -353,15 +378,32 @@ trigger_research("Winslow High School Brockton Bay layout students")
 5. **KNOWLEDGE BOUNDARY ENFORCEMENT (CRITICAL):**
 
    ⚠️ **FORBIDDEN KNOWLEDGE - ABSOLUTE RULES** ⚠️
+   The system injects the FORBIDDEN KNOWLEDGE list into every request. You have NO excuse
+   for violating it. This injected list is your FIRST LINE OF DEFENSE.
    Check `knowledge_boundaries.meta_knowledge_forbidden` via `read_bible("knowledge_boundaries")`.
 {forbidden_knowledge_section}
 
-   **MANDATORY: Use `check_knowledge_compliance(character_name, concept)` before writing
-   dialogue, inner monologue, or narrator descriptions of character awareness.**
+   VERIFY using `check_knowledge_compliance(character_name, concept)` — but the injected
+   FORBIDDEN KNOWLEDGE list is your first check. Use the tool as your SECOND verification
+   before writing dialogue, inner monologue, or narrator descriptions of character awareness.
    - If it returns `allowed: false` → DELETE the reference entirely
    - `violation_type: "forbidden"` → Concept does not exist in this universe
    - `violation_type: "doesnt_know"` → Character is unaware; remove reference
    - `violation_type: "secret"` → Secret is hidden from this person; keep it hidden
+
+   **WRITING AROUND FORBIDDEN KNOWLEDGE:**
+   If a character would naturally know a forbidden concept, WRITE AROUND IT. Have them change
+   the subject, be interrupted, or simply not bring it up. There is ALWAYS a narrative alternative.
+   INNER MONOLOGUE is also restricted — the protagonist CANNOT think about forbidden concepts
+   they do not know. No "sensing something familiar" or "feeling a strange resonance" that
+   hints at forbidden knowledge. Total narrative silence on these topics.
+
+   **CHARACTER SECRETS ENFORCEMENT (SYSTEM-INJECTED):**
+   The system injects CHARACTER SECRETS into every request. When writing dialogue for any
+   character, CHECK the injected secrets list FIRST.
+   - Characters can ONLY discuss what they canonically know. Use `get_character_profile()` to verify.
+   - If you are unsure whether a character knows something, they DO NOT. Default to ignorance.
+   - Characters cannot reveal secrets to those in their "absolutely_hidden_from" list.
 
    ☐ **Character secrets**: Check `knowledge_boundaries.character_secrets`
      - Characters cannot reveal secrets to those in their "absolutely_hidden_from" list
@@ -699,6 +741,9 @@ async def create_archivist(story_id: str) -> Agent:
     return Agent(
         name="archivist",
         model=ResilientGemini(model=settings.model_archivist),
+        generate_content_config=types.GenerateContentConfig(
+            max_output_tokens=settings.archivist_max_output_tokens,
+        ),
         output_schema=BibleDelta,  # Enforces structured output
         output_key="bible_delta",  # Saves to session state for retrieval
         before_agent_callback=before_timing,

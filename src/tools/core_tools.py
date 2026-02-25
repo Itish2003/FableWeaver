@@ -244,7 +244,57 @@ class BibleTools:
             
             return json.dumps(val, indent=2)
 
-    async def update_bible(self, key: str, value: str, max_retries: int = 3) -> str:
+    async def search_lore(self, query: str) -> str:
+        """
+        Search the World Bible knowledge base for entries relevant to a topic.
+        Use this to find detailed lore, timelines, power mechanics, factions, and
+        canon facts that were gathered during research.
+
+        Args:
+            query: Topic to search for (e.g. "cursed spirits", "Shibuya Incident",
+                   "Mahouka factions", "power system rules")
+
+        Returns:
+            JSON object of matching knowledge base entries, or a message if none found.
+        """
+        async with AsyncSessionLocal() as session:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await session.execute(stmt)
+            bible = result.scalar_one_or_none()
+
+            if not bible:
+                return "Error: World Bible not found for this story."
+
+            kb = (bible.content or {}).get("world_state", {}).get("knowledge_base", {})
+            if not kb:
+                return "Knowledge base is empty. Consider running /research first."
+
+            # Keyword match: split query into terms and score each entry
+            terms = [t.lower() for t in query.split() if len(t) > 2]
+            scored = []
+            for key, value in kb.items():
+                key_lower = key.lower().replace("_", " ")
+                # Score by how many query terms appear in the key
+                score = sum(1 for t in terms if t in key_lower)
+                # Boost exact substring match
+                if query.lower().replace(" ", "_") in key.lower():
+                    score += 5
+                if score > 0:
+                    scored.append((score, key, value))
+
+            if not scored:
+                # Fallback: return all keys so the LLM knows what's available
+                return json.dumps({
+                    "message": f"No entries matched '{query}'. Available topics:",
+                    "available_keys": sorted(kb.keys())
+                }, indent=2)
+
+            # Sort by score descending, return top 15
+            scored.sort(key=lambda x: -x[0])
+            matches = {k: v for _, k, v in scored[:15]}
+            return json.dumps(matches, indent=2)
+
+    async def update_bible(self, key: str, value: str, max_retries: int = 8) -> str:
         """
         Updates the World Bible in the database using optimistic concurrency control.
         Key should be dot notation. Value should be a JSON-serializable object or string.
@@ -255,7 +305,7 @@ class BibleTools:
         Args:
             key: Dot-notation path to the field being updated (e.g., "power_origins.sources")
             value: The value to set
-            max_retries: Number of times to retry on version conflict (default 3)
+            max_retries: Number of times to retry on version conflict (default 8)
 
         Returns:
             Success or error message. On version conflict after max retries, returns error.
@@ -329,6 +379,25 @@ class BibleTools:
                     settings = get_settings()
                     validation_mode = settings.bible_schema_validation_mode
                     validated_value = validate_bible_section(key, fixed_value, mode=validation_mode)
+
+                    # Array-extend: when both existing and new values are lists,
+                    # EXTEND (append) instead of replacing.  This prevents data
+                    # loss when e.g. appending new canon_timeline events.
+                    existing = current.get(keys[-1])
+                    if isinstance(existing, list) and isinstance(validated_value, list):
+                        # Deduplicate: skip items already present (by equality)
+                        existing_set = {json.dumps(e, sort_keys=True) if isinstance(e, (dict, list)) else e for e in existing}
+                        for item in validated_value:
+                            item_key = json.dumps(item, sort_keys=True) if isinstance(item, (dict, list)) else item
+                            if item_key not in existing_set:
+                                existing.append(item)
+                                existing_set.add(item_key)
+                        validated_value = existing
+                        logger.info(
+                            "Array-extend for '%s': now %d items (was %d)",
+                            key, len(validated_value), len(existing_set),
+                        )
+
                     current[keys[-1]] = validated_value
 
                     # FIX #33: Check for and clean power context leakage
@@ -368,45 +437,45 @@ class BibleTools:
                         # Update the value in the dict
                         current[keys[-1]] = validated_value
 
-                    # Step 3: Attempt write with version check
-                    # Use scalar query to bypass SQLAlchemy identity map and get fresh version from DB
-                    current_version = await session.scalar(
-                        select(WorldBible.version_number).where(
-                            WorldBible.story_id == self.story_id
+                    # Step 3: Atomic update using SQL WHERE on version_number.
+                    # This avoids the TOCTOU race where concurrent writes could
+                    # slip between a version check and commit.  Only ONE writer
+                    # succeeds per version; losers retry with fresh data.
+                    from sqlalchemy import update as sa_update
+                    rows = await session.execute(
+                        sa_update(WorldBible)
+                        .where(
+                            WorldBible.story_id == self.story_id,
+                            WorldBible.version_number == original_version,
+                        )
+                        .values(
+                            content=data,
+                            version_number=original_version + 1,
                         )
                     )
-
-                    if current_version != original_version:
-                        # Version mismatch: another update occurred while we were modifying
+                    if rows.rowcount == 0:
+                        # Version changed — another writer won.  Retry.
                         await session.rollback()
                         if attempt < max_retries - 1:
-                            wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1s, 0.2s, 0.4s
-                            logger.debug(
-                                f"Version conflict on '{key}' (v{original_version} → v{current_version}). "
-                                f"Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
+                            wait_time = 0.1 * (2 ** attempt)
+                            logger.info(
+                                "Version conflict on '%s' (v%s). "
+                                "Retrying in %.1fs... (attempt %d/%d)",
+                                key, original_version,
+                                wait_time, attempt + 1, max_retries,
                             )
                             await asyncio.sleep(wait_time)
-                            continue  # Retry the entire operation
+                            continue
                         else:
                             return (
                                 f"Error updating '{key}': Version conflict after {max_retries} retries. "
                                 "Too many concurrent updates."
                             )
 
-                    # Step 4: Commit with incremented version
-                    # Re-fetch bible object for commit (identity map has current version now)
-                    bible_for_commit = await session.execute(
-                        select(WorldBible).where(WorldBible.story_id == self.story_id)
-                    )
-                    bible_for_commit = bible_for_commit.scalar_one_or_none()
-                    bible_for_commit.content = data
-                    bible_for_commit.version_number += 1
-                    flag_modified(bible_for_commit, "content")
-
                     await session.commit()
 
                     logger.debug(
-                        f"Successfully updated '{key}' (v{original_version} → v{bible_for_commit.version_number})"
+                        f"Successfully updated '{key}' (v{original_version} → v{original_version + 1})"
                     )
 
                     # Sync to disk for debugging (User Requirement)
@@ -967,6 +1036,9 @@ class BibleTools:
         mandatory = []
         for event in upcoming_events:
             pressure = await self.calculate_event_pressure(event)
+            # Threshold 7.0 catches both CRITICAL (>=8.0) and high-urgency HIGH events.
+            # The Storyteller instruction references "pressure >= 8.0" for CRITICAL events,
+            # but mandatory events should include anything above 7.0 for safety margin.
             if pressure.get("pressure_score", 0) >= 7.0 or pressure.get("days_remaining", 99) <= 0:
                 mandatory.append(pressure)
 
@@ -1324,8 +1396,36 @@ Unaddressed:        {unaddressed_count}/{total}
                                             "mastery_progression": mastery_stages,
                                             "canon_scene_examples": scene_examples[:2],
                                             "current_strain": strain_info.get("strain_level", "none") if isinstance(strain_info, dict) else "none",
-                                            "weaknesses": source.get("weaknesses_and_counters", [])
+                                            "weaknesses": source.get("weaknesses_and_counters", []),
+                                            "combat_style": source.get("combat_style", ""),
+                                            "signature_moves": source.get("signature_moves", []),
+                                            "usage_style": source.get("usage_style", ""),
+                                            "unexplored_potential": source.get("unexplored_potential", []),
                                         }, indent=2)
+                        # No specific technique matched — check if a source NAME matches
+                        # (e.g. query "Cursed Spirit Manipulation" matches source.power_name)
+                        for source in content.get("power_origins", {}).get("sources", []):
+                            if isinstance(source, dict):
+                                source_name = source.get("power_name", source.get("name", "")).lower()
+                                if search_term in source_name or source_name in search_term:
+                                    usage_tracking = content.get("power_origins", {}).get("usage_tracking", {})
+                                    power_key = source.get("power_name", source.get("name", ""))
+                                    strain_info = usage_tracking.get(power_key, {})
+                                    return json.dumps({
+                                        "valid": True,
+                                        "power": pname,
+                                        "description": pdesc,
+                                        "mastery": source.get("oc_current_mastery", "unknown"),
+                                        "mastery_progression": source.get("mastery_progression", []),
+                                        "canon_scene_examples": source.get("canon_scene_examples", [])[:3],
+                                        "current_strain": strain_info.get("strain_level", "none") if isinstance(strain_info, dict) else "none",
+                                        "weaknesses": source.get("weaknesses_and_counters", []),
+                                        "combat_style": source.get("combat_style", ""),
+                                        "signature_moves": source.get("signature_moves", []),
+                                        "usage_style": source.get("usage_style", ""),
+                                        "unexplored_potential": source.get("unexplored_potential", []),
+                                        "all_techniques": source.get("canonical_techniques", source.get("canon_techniques", [])),
+                                    }, indent=2)
                         return json.dumps({"valid": True, "power": pname, "description": pdesc}, indent=2)
 
             # Check world_state.characters for other characters
