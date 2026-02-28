@@ -25,4 +25,5 @@ class WsSessionContext:
     active_agent: Any = None        # set by init/choice/rewrite handlers
     input_text: str = ""            # set by init/choice/rewrite handlers
     bible_snapshot_content: dict | None = None  # set by choice/rewrite handlers
+    question_answers: dict | None = None  # set by choice handler, persisted by runner
     action: str = ""                # current action name

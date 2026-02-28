@@ -279,15 +279,30 @@ async def auto_update_bible_from_chapter(story_id: str, chapter_text: str, chapt
                 }
                 updates_made.append(f"divergences: +{len(divergences)}")
 
-        # 3. Track power usage
+        # 3. Track power usage (with canonical name normalization)
         power_debt = stakes_tracking.get('power_debt_incurred', {}) if stakes_tracking else {}
         if power_debt:
             if 'power_origins' not in content:
                 content['power_origins'] = {}
             if 'usage_tracking' not in content['power_origins']:
                 content['power_origins']['usage_tracking'] = {}
+
+            # Build canonical name lookup from power_origins.sources
+            sources = content.get('power_origins', {}).get('sources', [])
+            canonical_map: dict[str, str] = {}
+            for src in sources:
+                pn = src.get('power_name', '')
+                if pn:
+                    canonical_map[pn.lower()] = pn
+                    # Also map common abbreviations via short_name
+                    short = src.get('short_name', '')
+                    if short:
+                        canonical_map[short.lower()] = pn
+
             for power, level in power_debt.items():
-                content['power_origins']['usage_tracking'][power] = {
+                # Normalize key to canonical source name
+                normalized = canonical_map.get(power.lower(), power)
+                content['power_origins']['usage_tracking'][normalized] = {
                     'last_chapter': chapter_num,
                     'strain_level': level if isinstance(level, str) else str(level)
                 }

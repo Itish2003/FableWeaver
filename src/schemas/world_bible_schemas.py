@@ -332,6 +332,28 @@ class KnowledgeViolation(GeminiCompatibleModel):
     )
 
 
+class PowerUsageEntry(GeminiCompatibleModel):
+    """A single power usage strain update from the Archivist."""
+    model_config = ConfigDict(extra="forbid")
+
+    power_name: str = Field(
+        ...,
+        description="Canonical power source name (e.g., 'Cursed Spirit Manipulation', 'Ten Shadows Technique')"
+    )
+    technique_used: Optional[str] = Field(
+        default=None,
+        description="Specific technique name if applicable"
+    )
+    strain_level: str = Field(
+        ...,
+        description="Current strain: none | low | medium | high | critical"
+    )
+    chapter: int = Field(
+        ...,
+        description="Chapter where power was used"
+    )
+
+
 class PowerScalingViolation(GeminiCompatibleModel):
     """Records a protected character written below their documented competence level."""
     model_config = ConfigDict(extra="forbid")
@@ -440,6 +462,12 @@ class BibleDelta(GeminiCompatibleModel):
     power_scaling_violations: List[PowerScalingViolation] = Field(
         default_factory=list,
         description="Protected characters written below their documented competence level"
+    )
+
+    # Power usage strain tracking (feeds enforcement block for next chapter)
+    power_usage_updates: List[PowerUsageEntry] = Field(
+        default_factory=list,
+        description="Power strain updates from this chapter. Track ALL powers used with their resulting strain level."
     )
 
     # Brief summary for logging

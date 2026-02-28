@@ -161,7 +161,10 @@ def _apply_world_state(content: Dict, output: LoreKeeperOutput, results: Dict) -
     if output.world_state_characters:
         if "characters" not in content["world_state"]:
             content["world_state"]["characters"] = {}
-        content["world_state"]["characters"].update(output.world_state_characters)
+        # Normalize powers to dict format before merging (fixes #46)
+        from src.utils.bible_validator import _normalize_characters_powers
+        normalized = _normalize_characters_powers(output.world_state_characters)
+        content["world_state"]["characters"].update(normalized)
         results["updates_applied"].append("world_state.characters")
 
     if output.world_state_locations:

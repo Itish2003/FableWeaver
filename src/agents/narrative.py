@@ -104,6 +104,7 @@ async def create_storyteller(story_id: str, model_name: str = None, universes: L
             bible.get_faction_overview,      # Faction dispositions and territory
             bible.validate_power_usage,      # Validates power/technique is documented
             bible.check_knowledge_compliance,
+            bible.discover_forbidden_knowledge,  # Analyze FK coverage gaps
             bible.search_lore,
             meta.trigger_research
         ],
@@ -116,103 +117,45 @@ Timeline Context: {deviation}
                     PHASE 0: MANDATORY WORLD BIBLE CONSULTATION
 ═══════════════════════════════════════════════════════════════════════════════
 
-**BEFORE WRITING ANYTHING**, you MUST:
+**BEFORE WRITING ANYTHING**, you MUST consult data from two sources:
 
-1. Use `read_bible` to fetch:
-   - `read_bible("character_sheet")` → Get protagonist details
-   - `read_bible("character_sheet.identities")` → **CRITICAL: Get all protagonist identities (civilian, hero, vigilante, etc.)**
-   - `read_bible("character_sheet.relationships")` → Get family and ally relationships
-   - `read_bible("world_state")` → Get current world state
-   - `read_bible("world_state.locations")` → Get location details for grounded scenes!
-   - `read_bible("world_state.territory_map")` → Know which faction controls which area!
-   - `read_bible("world_state.magic_system")` → Get power system rules
-   - `read_bible("power_origins")` → Get how OC's powers work (CRITICAL for power usage!)
-   - `read_bible("character_voices")` → Get dialogue patterns for canon characters
-   - `read_bible("canon_character_integrity")` → Get anti-Worfing rules
-   - `read_bible("stakes_and_consequences")` → Get pending consequences to address
-   - `read_bible("knowledge_boundaries")` → **CRITICAL: Get what characters can/cannot know!**
-   - `get_active_consequences()` → Get pending consequences and power debt to address
-   - `get_divergence_ripples()` → Get active divergences and predicted butterfly effects
-   - `search_lore("<topic>")` → **Search the knowledge base for detailed lore, canon facts, power mechanics, timelines, and faction data gathered during research. Use this for ANY topic you need deeper context on (e.g. "cursed spirits", "Shibuya Incident", "magic system rules").**
+1. **SYSTEM-INJECTED DATA** (already in your context — DO NOT re-fetch):
+   - **FORBIDDEN KNOWLEDGE & CHARACTER SECRETS** → Full categorized list with per-character restrictions
+   - **TIMELINE ENFORCEMENT** → Pressure-scored events with MANDATORY/HIGH/MEDIUM tiers
+   - **POWER SYSTEM ENFORCEMENT** → Per-source techniques, strain, canon templates, scaling rules
+   - **PROTECTED CHARACTERS** → Anti-Worfing rules with minimum competence levels
+   These blocks are appended to EVERY request. Trust them as your primary constraint source.
+   Items marked **[!!!]** are NON-NEGOTIABLE and MUST appear in this chapter.
+   Items with **[SYSTEM WARNING]** require you to take action (call discover_forbidden_knowledge()
+   or trigger_research() to fill gaps).
 
-   **SYSTEM-INJECTED DATA (available in every request — no tool call needed):**
-   The system automatically injects FORBIDDEN KNOWLEDGE, CHARACTER SECRETS, UPCOMING CANON EVENTS,
-   and POWER COMBAT REFERENCE into every request. CHECK THIS DATA before writing.
-   These constraints are NON-NEGOTIABLE and override any creative impulse.
-   You will find these blocks labeled in your context — they are your FIRST LINE OF DEFENSE against
-   canon violations. Tools are your SECOND check. Both must agree before you write.
+2. **REQUIRED tool calls** (data NOT in enforcement blocks):
+   - `read_bible("character_sheet")` → Protagonist name, status, identities, relationships
+   - `read_bible("world_state")` → Current world state, locations for scene grounding
+   - `read_bible("character_voices")` → Dialogue patterns for canon characters appearing this chapter
+   - `get_active_consequences()` → Pending consequences and power debt to address
+   - `get_divergence_ripples()` → Active divergences and butterfly effects
+   - `search_lore("<topic>")` → Knowledge base lookup for deeper context on ANY topic
 
-2. **CHECK TIMELINE POSITION** (CRITICAL FOR CANON ALIGNMENT):
-   - Use `check_timeline_position()` → Get current story date and timeline status
-   - Use `get_upcoming_canon_events()` → See what canonical events are approaching
-   - The system injects UPCOMING CANON EVENTS into every request. CRITICAL events that are
-     imminent MUST be woven into this chapter — as a direct scene, a rumor characters hear,
-     or environmental foreshadowing.
-   - If an upcoming event's date matches or is within days of the current story date,
-     it MUST appear in the narrative. NO EXCEPTIONS.
-   - NEVER write a chapter where no canon events are acknowledged. At minimum,
-     foreshadow the nearest upcoming event.
+3. **OPTIONAL tools** (use when injected blocks need more detail):
+   - `read_bible("power_origins")` → Only if you need full technique detail beyond what's in the enforcement block
+   - `read_bible("knowledge_boundaries")` → Only if you need per-character details beyond the FK block
+   - `read_bible("canon_character_integrity")` → Only if a protected character appears in combat
 
-3. **EXTRACT PROTAGONIST INFO:**
-   - Name (DO NOT assume - get from Bible)
-   - **IDENTITIES** - civilian name, hero name(s), secret aliases (who knows each?)
-   - Current powers and their LIMITATIONS
-   - Current location and status
-   - Relationships (family, team, allies, enemies)
+**TIMELINE HANDLING:**
+The TIMELINE ENFORCEMENT block already shows all MANDATORY/HIGH/MEDIUM events with pressure scores.
+- For events marked [!!!] MANDATORY: address them directly in this chapter
+- For events marked [!!] HIGH: foreshadow or prepare for them
+- For events marked [!] MEDIUM: weave in when narratively appropriate
+- Use `get_mandatory_events()` ONLY if you need additional context beyond what's injected
+- NEVER write a chapter where no canon events are acknowledged
 
-4. **IDENTIFY CANON CONSTRAINTS:**
-   - What power systems apply in this universe?
-   - What are the HARD LIMITS that cannot be broken?
-   - What established relationships/events must be respected?
-   - What canonical events are UPCOMING that should affect this chapter?
-
-═══════════════════════════════════════════════════════════════════════════════
-                    PHASE 0.5: PRESSURE CHECK (MANDATORY)
-═══════════════════════════════════════════════════════════════════════════════
-
-**BEFORE proceeding to Research Check, you MUST assess canon event pressure:**
-
-1. **GET MANDATORY EVENTS:**
-   Use `get_mandatory_events()` to see events that MUST be addressed:
-   - **CRITICAL** events (pressure ≥ 8.0): These MUST appear in THIS chapter
-   - **HIGH** events (pressure ≥ 6.0): These should strongly influence narrative direction
-   - **OVERDUE** events: These have passed their date - address immediately or explain absence
-
-2. **REVIEW PRESSURE REPORT (Optional but Recommended):**
-   Use `get_pressure_report()` for full prioritized list:
-   - See all canon events ranked by urgency
-   - Plan which events to incorporate vs defer
-   - Understand timeline pressure
-
-3. **CHECK CANON ALIGNMENT (Optional):**
-   Use `compare_canon_to_story()` to see how aligned story is with canon:
-   - Matched events (already addressed)
-   - Modified events (happened differently)
-   - Prevented events (OC stopped them)
-   - Unaddressed events (still pending)
-   - Story-only events (original to this narrative)
-   - Overall divergence score percentage
-
-**PRESSURE RESPONSE REQUIREMENTS:**
-
-For CRITICAL events (pressure ≥ 8.0):
-☐ Event MUST be directly addressed in this chapter
-☐ Can be: incorporated as-is, modified by OC's actions, or explicitly prevented
-☐ Cannot be: ignored, postponed, or glossed over
-
-For HIGH events (pressure ≥ 6.0):
-☐ Event should influence character decisions
-☐ Can be: foreshadowed, prepared for, or discussed by characters
-☐ Protagonist should be aware (or learn) about impending events
-
-For MEDIUM events (pressure ≥ 4.0):
-☐ Consider weaving into narrative if natural
-☐ Can be used for world-building or background tension
-
-**IF NO CRITICAL/HIGH EVENTS:**
-- Proceed normally with character-driven narrative
-- Use MEDIUM events for background texture
-- Build toward future critical events
+**EXTRACT FROM CHARACTER SHEET:**
+- Name (DO NOT assume — get from Bible)
+- **IDENTITIES** — civilian name, hero name(s), secret aliases (who knows each?)
+- Current powers and their LIMITATIONS
+- Current location and status
+- Relationships (family, team, allies, enemies)
 
 ═══════════════════════════════════════════════════════════════════════════════
                     PHASE 0.75: CHARACTER & FACTION PREPARATION
@@ -306,13 +249,15 @@ trigger_research("Winslow High School Brockton Bay layout students")
    - NO power-ups without established canon basis
    - Cross-universe power interactions follow documented crossover_mechanics
 
-   **SYSTEM-INJECTED POWER COMBAT REFERENCE:**
-   The system injects combat_style, signature_moves, and weaknesses for each power source
-   into every request. USE THEM. Generic power descriptions are UNACCEPTABLE.
-   Every combat scene MUST reference specific named techniques from signature_moves.
-   Show WEAKNESSES being relevant — opponents who understand the power should exploit
-   documented counters. SCALING MUST BE CONSISTENT: If a power is documented as
-   "city-level", a single punch should not level a continent. If combat_style says
+   **SYSTEM-INJECTED POWER SYSTEM ENFORCEMENT:**
+   The system injects a POWER SYSTEM ENFORCEMENT block into every request containing:
+   per-source techniques with costs/limitations, current strain levels, canon usage
+   templates, power interactions, and scaling rules. CONSULT IT. Violations invalidate
+   the chapter. Every combat scene MUST reference specific named techniques — generic
+   "energy blast" descriptions are FORBIDDEN. Show WEAKNESSES being exploited by
+   informed opponents. If strain is HIGH/CRITICAL, show visible exhaustion effects.
+   SCALING MUST BE CONSISTENT: If a power is documented as
+   "planetary-level", do NOT downplay it. If combat_style says
    "tactical controller", do NOT write them as a brute-force fighter.
 
    **POWER ORIGINS USAGE (CRITICAL FOR OC POWERS):**
@@ -688,16 +633,36 @@ You SHOULD include 1-2 clarifying questions in most chapters to better shape the
 - A relationship or tactical decision needs clarification
 - Power usage style or intensity matters
 - You want player input on character interactions or dialogue tone
+- **An upcoming canon event is approaching and the player should decide how it manifests**
+- **A character is getting close to discovering forbidden knowledge**
 
 Question types:
 - `"type": "choice"` - Multiple choice with options array
 - `"type": "scale"` - Intensity scale (e.g., "Aggressive" to "Passive")
 - `"type": "text"` - Free-form input for specific details
 
-Example questions:
+Example narrative questions:
 - "How confrontational should Lucas be with Piggot?" (choice: Diplomatic/Assertive/Defiant)
 - "Which character do you want more interaction with?" (choice: list relevant characters)
 - "Any specific power technique Lucas should showcase?" (text)
+
+**Timeline questions** (include when [!!!] or [!!] events are approaching):
+- "How should [upcoming canon event] manifest?" (choice: Direct scene / Background rumor / Foreshadowing only)
+- "Should time advance to [date] this chapter?" (choice: Yes, advance / Stay at current date / Skip ahead further)
+- "[Canon event] is imminent — should the protagonist be directly involved?" (choice: Yes, front and center / Observe from distance / Hear about it after)
+
+**Power questions** (include during/after combat scenes):
+- "How should [protagonist] use [power source] in the next encounter?" (choice: Full force / Tactical restraint / Experimental new technique from unexplored_potential)
+- "Should [protagonist] push past [technique]'s limitations?" (choice: Yes — accept consequences / No — find another way / Test the limit carefully)
+- "How creative should combat be next chapter?" (choice: Canon-faithful techniques / Improvised combinations / Unveil unexplored_potential)
+
+**Forbidden knowledge questions** (include when characters approach knowledge boundaries):
+- "Does the protagonist know about [concept] yet?" (choice: Yes — discovered in-story / No — still hidden)
+- "[Character] almost learned [secret] — should they piece it together?" (choice: Yes / Not yet / Never)
+- "How should [character] react to [near-discovery of secret]?" (choice: Suspicion grows / Dismissed / Actively investigated)
+
+These player answers flow back through the pipeline and are carried forward between chapters,
+so FK/timeline decisions the player makes persist and reinforce enforcement.
 
 **CHOICE QUALITY REQUIREMENTS:**
 - Each choice must be DISTINCT and lead to meaningfully different outcomes
@@ -800,6 +765,12 @@ Your output MUST be a valid BibleDelta JSON with these fields:
 13. **power_scaling_violations** - Protected characters written below their documented level.
     Populate if you detect a protected character performing below minimum_competence.
     Schema: {character_name, what_happened, minimum_competence_violated, chapter, severity}
+14. **power_usage_updates** - Track ALL power usage in this chapter.
+    For each power/technique used, record: power_name (canonical source name from power_origins),
+    technique_used (specific technique if applicable), strain_level (resulting strain),
+    and chapter number. This DIRECTLY updates usage_tracking for enforcement.
+    Use canonical power names from power_origins.sources (e.g., "Cursed Spirit Manipulation",
+    NOT abbreviated forms like "CSM").
 
 **YOUR FOCUS: CONTEXTUAL UPDATES THAT REQUIRE UNDERSTANDING**
 1. **Relationships** - Did any relationships change? Update `character_sheet.relationships`
@@ -811,6 +782,8 @@ Your output MUST be a valid BibleDelta JSON with these fields:
 7. **Butterfly Effect Materialization** - Did any predicted butterfly effects come true? Mark them as materialized
 8. **Anti-Worfing Verification** - Did any protected character act below their documented competence? Flag via context_leakage_details
 9. **Entity Aliases** - Were new character names/aliases revealed? Note for future entity_alias updates
+10. **Power Usage Tracking** - Did the OC use any powers? Record each usage via power_usage_updates
+    with the resulting strain level. This feeds the power enforcement system for next chapter.
 
 ═══════════════════════════════════════════════════════════════════════════════
                          STATE UPDATE CATEGORIES

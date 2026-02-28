@@ -787,7 +787,10 @@ Do NOT call read_bible first — start updating immediately.
 
 **1. WORLD STATE — CHARACTERS (1 call, 5+ profiles):**
 → `update_bible("world_state.characters", '<dict of character profiles>')`
-Each: `{{"name": "...", "aliases": [...], "universe_origin": "...", "role": "...", "powers": "...", "threat_level": "...", "relationship_to_protagonist": "...", "status": "..."}}`
+Each: `{{"name": "...", "aliases": [...], "universe_origin": "...", "role": "...", "powers": {{"PowerName1": "Description of power", "PowerName2": "Description"}}, "threat_level": "...", "relationship_to_protagonist": "...", "status": "..."}}`
+⚠️ `powers` MUST be a DICT of power_name→description, NOT a comma-separated string.
+   WRONG: `"powers": "Decomposition, Regrowth, Flash Cast"`
+   RIGHT: `"powers": {{"Decomposition": "Breaks down structural information of objects", "Regrowth": "Restores objects/people to prior state", "Flash Cast": "Bypasses CAD activation"}}`
 
 **2. WORLD STATE — LOCATIONS (1 call, 8-10 locations):**
 → `update_bible("world_state.locations", '<dict of location profiles>')`
@@ -868,15 +871,47 @@ For family-based teams, convert ALL members to relationships.
 → `update_bible("character_sheet.knowledge", '["KnownFact1", "KnownFact2", ...]')`
 What the protagonist knows at story start: common knowledge, personal knowledge, professional.
 
-**9. KNOWLEDGE BOUNDARIES (4 calls — CRITICAL FOR ACCURACY):**
-→ `update_bible("knowledge_boundaries.meta_knowledge_forbidden", '["Secret1", "Secret2", ...]')`
-  Things READERS know but CHARACTERS must NEVER know (future events, meta-universe info).
+**9. KNOWLEDGE BOUNDARIES (4 calls — CRITICAL FOR ACCURACY, MINIMUM 15 FORBIDDEN ENTRIES):**
+
+The Storyteller CANNOT enforce knowledge boundaries if this section is thin.
+You MUST populate meta_knowledge_forbidden with **at least 15 entries** across these categories:
+
+**CATEGORY A — FUTURE EVENTS (minimum 5):**
+Any canon event that happens AFTER the story_start_date is a spoiler.
+Examples: "The Shibuya Incident occurs in October 2018", "All Might retires after fighting All For One",
+"Leviathan attacks Brockton Bay in May 2011", "Eren activates the Rumbling"
+
+**CATEGORY B — HIDDEN IDENTITIES (minimum 3):**
+Secret identities, true names, or identity connections that aren't public.
+Examples: "Tatsuya Shiba is a Yotsuba", "Shadow Stalker is Sophia Hess", "Tobi is Obito Uchiha"
+
+**CATEGORY C — META/CROSS-UNIVERSE KNOWLEDGE (minimum 2):**
+Out-of-universe concepts, narrative awareness, or cross-universe leakage.
+Examples: "The concept of 'Jujutsu Kaisen' as a manga/anime", "Knowledge of other universe's power systems by their canonical names"
+
+**CATEGORY D — POWER SECRETS (minimum 3):**
+Undisclosed techniques, true power levels, hidden abilities, sealed powers.
+Examples: "Protagonist's true power system is CSM + TST, not 'Parade' illusions",
+"Gojo's Infinity has a weakness to Domain Expansion", "The protagonist can summon Mahoraga"
+
+**CATEGORY E — CROSS-UNIVERSE SPOILERS (minimum 2, if crossover story):**
+If the story crosses universes, include spoilers from the secondary universe.
+Examples: "How Cursed Spirit Manipulation truly works in JJK", "Sukuna's true form and capabilities"
+
+→ `update_bible("knowledge_boundaries.meta_knowledge_forbidden", '[<at least 15 entries covering all categories above>]')`
+  Things READERS know but CHARACTERS must NEVER know.
+  **FAILURE TO POPULATE 15+ entries means the Storyteller has NO knowledge enforcement.**
+
 → `update_bible("knowledge_boundaries.common_knowledge", '["PublicFact1", "PublicFact2", ...]')`
   Things everyone in-universe knows.
+
 → `update_bible("knowledge_boundaries.character_secrets", '<dict>')`
   Each: `{{"secret": "...", "known_by": [...], "absolutely_hidden_from": [...]}}`
+  Map every character who holds a secret. Include the protagonist's hidden abilities.
+
 → `update_bible("knowledge_boundaries.character_knowledge_limits", '<dict>')`
   Each: `{{"knows": [...], "doesnt_know": [...], "suspects": [...]}}`
+  Map at least: protagonist, primary antagonist, closest ally, and any character who interacts with the protagonist's hidden powers.
 
 **10. ANTI-WORFING PROTECTIONS (2 calls — MANDATORY, MINIMUM 5 CHARACTERS):**
 → `update_bible("canon_character_integrity.protected_characters", '[<at least 5 entries>]')`

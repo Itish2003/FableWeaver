@@ -62,18 +62,18 @@ def validate_and_fix_bible_entry(path: str, value: Any) -> Any:
 
     # Handle character_sheet.powers: convert string to dict
     elif path == "character_sheet.powers":
-        if isinstance(value, str):
-            # Convert comma-separated string to dict
-            # "Decomposition, Regrowth, Flash Cast" → {"Decomposition": "", "Regrowth": "", "Flash Cast": ""}
-            powers_list = [p.strip() for p in value.split(',')]
-            return {power: "" for power in powers_list if power}
-        elif isinstance(value, list):
-            # Convert list to dict
-            return {power: "" for power in value if isinstance(power, str)}
-        elif isinstance(value, dict):
-            # Already correct format
-            return value
-        return {}
+        return _normalize_powers_to_dict(value)
+
+    # Handle world_state.characters (full section update) — normalize powers for each character
+    elif path == "world_state.characters" and isinstance(value, dict):
+        return _normalize_characters_powers(value)
+
+    # Handle world_state.characters.<Name> (individual character update)
+    elif path.startswith("world_state.characters.") and path.count(".") == 2 and isinstance(value, dict):
+        if "powers" in value:
+            value = copy.deepcopy(value)
+            value["powers"] = _normalize_powers_to_dict(value["powers"])
+        return value
 
     # Handle full section updates
     # Support both "stakes_tracking" and "stakes_and_consequences" paths
@@ -87,6 +87,33 @@ def validate_and_fix_bible_entry(path: str, value: Any) -> Any:
         return _fix_timeline_section(value)
 
     return value
+
+
+def _normalize_powers_to_dict(value: Any) -> dict:
+    """Convert any powers format to canonical dict of name→description.
+
+    Handles:
+        str  → "Power1, Power2" → {"Power1": "", "Power2": ""}
+        list → ["Power1", "Power2"] → {"Power1": "", "Power2": ""}
+        dict → passthrough (already correct)
+    """
+    if isinstance(value, str):
+        powers_list = [p.strip() for p in value.split(',')]
+        return {power: "" for power in powers_list if power}
+    elif isinstance(value, list):
+        return {power: "" for power in value if isinstance(power, str)}
+    elif isinstance(value, dict):
+        return value
+    return {}
+
+
+def _normalize_characters_powers(characters: dict) -> dict:
+    """Normalize the powers field for every character in a characters dict."""
+    result = copy.deepcopy(characters)
+    for char_name, char_data in result.items():
+        if isinstance(char_data, dict) and "powers" in char_data:
+            char_data["powers"] = _normalize_powers_to_dict(char_data["powers"])
+    return result
 
 
 def _fix_cost(cost: Any) -> dict:

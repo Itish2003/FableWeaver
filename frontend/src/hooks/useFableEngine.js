@@ -97,6 +97,10 @@ export function useFableEngine() {
         // Handle both {choices: [...]} object format and direct array format
         const lastChoices = lastChapter?.choices?.choices || lastChapter?.choices || null;
 
+        // Extract questions from last chapter's persisted choices
+        const lastQuestions = lastChapter?.choices?.questions || null;
+        setQuestions(lastQuestions);
+
         // Update local state with fetched history AND last chapter's choices
         setGames(prev => prev.map(g => g.id === activeGameId ? { ...g, ...details, choices: lastChoices } : g));
 

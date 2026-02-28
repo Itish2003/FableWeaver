@@ -66,6 +66,7 @@ async def apply_bible_delta(story_id: str, delta: BibleDelta) -> Dict[str, Any]:
             _apply_faction_updates(content, delta, results)
             _apply_knowledge_violations(content, delta, results)
             _apply_power_scaling_violations(content, delta, results)
+            _apply_power_usage_updates(content, delta, results)
 
             # Save if we made updates
             if results["updates_applied"]:
@@ -438,6 +439,44 @@ def _apply_power_scaling_violations(content: dict, delta, results: dict):
         results["updates_applied"].append(
             f"power_scaling_violation:{violation.character_name}"
         )
+
+
+def _apply_power_usage_updates(content: dict, delta: BibleDelta, results: dict):
+    """Apply power usage strain updates to power_origins.usage_tracking.
+
+    Maps Archivist-provided power names to canonical source names from
+    power_origins.sources, then writes strain entries.
+    """
+    if not delta.power_usage_updates:
+        return
+
+    if "power_origins" not in content:
+        content["power_origins"] = {}
+    if "usage_tracking" not in content["power_origins"]:
+        content["power_origins"]["usage_tracking"] = {}
+
+    usage = content["power_origins"]["usage_tracking"]
+
+    # Build canonical name lookup from known sources
+    known_sources: dict[str, str] = {}
+    for src in content.get("power_origins", {}).get("sources", []):
+        pn = src.get("power_name", "")
+        if pn:
+            known_sources[pn.lower()] = pn
+            # Also map short_name if present
+            short = src.get("short_name", "")
+            if short:
+                known_sources[short.lower()] = pn
+
+    for entry in delta.power_usage_updates:
+        # Try to normalize to canonical source name
+        canonical = known_sources.get(entry.power_name.lower(), entry.power_name)
+        key = f"{canonical} ({entry.technique_used})" if entry.technique_used else canonical
+        usage[key] = {
+            "last_chapter": entry.chapter,
+            "strain_level": entry.strain_level,
+        }
+        results["updates_applied"].append(f"power_strain:{key}")
 
 
 def _find_matching_entry(entries: list, new_entry: dict, match_fields: list, fuzzy_fields: list = None) -> int | None:

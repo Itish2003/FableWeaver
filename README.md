@@ -22,7 +22,7 @@ FableWeaver is an advanced Interactive Fiction engine powered by Google Gemini 2
    # GOOGLE_API_KEYS=key1,key2,key3...
 
    # Start Server
-   ./.venv/bin/python -m uvicorn src.main:app --host 0.0.0.0 --port 8000
+   ./.venv/bin/python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
 2. **Frontend**:

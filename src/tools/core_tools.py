@@ -210,6 +210,50 @@ async def get_default_bible_content():
     """
     return get_enhanced_default_bible()
 
+_STRAIN_SEVERITY = {"critical": 4, "high": 3, "medium": 2, "low": 1, "none": 0}
+
+
+def _find_best_strain(source_name: str, usage_tracking: dict) -> dict:
+    """Find the highest strain entry in usage_tracking matching a power source.
+
+    Tries exact match on source_name first, then partial/prefix match on the
+    source name and its abbreviated form (e.g. "CSM" from "Cursed Spirit Manipulation (CSM)").
+    Aggregates all matching entries and returns the highest severity one.
+    """
+    # Exact match
+    entry = usage_tracking.get(source_name)
+    if isinstance(entry, dict):
+        return entry
+
+    # Build search terms from the source name
+    source_lower = source_name.lower()
+    # Extract short name from parentheses if present, e.g. "CSM" from "Cursed Spirit Manipulation (CSM)"
+    short_name = ""
+    if "(" in source_name:
+        short_name = source_name.split("(")[1].rstrip(")").strip().lower()
+
+    best_severity = 0
+    best_entry: dict = {}
+
+    for key, data in usage_tracking.items():
+        if not isinstance(data, dict):
+            continue
+        key_lower = key.lower()
+        matched = (
+            source_lower in key_lower
+            or key_lower in source_lower
+            or (short_name and (short_name in key_lower or key_lower.startswith(short_name)))
+        )
+        if matched:
+            level = data.get("strain_level", "none").strip().lower()
+            severity = _STRAIN_SEVERITY.get(level, 0)
+            if severity > best_severity:
+                best_severity = severity
+                best_entry = data
+
+    return best_entry
+
+
 class BibleTools:
     def __init__(self, story_id: str):
         self.story_id = story_id
@@ -324,7 +368,11 @@ class BibleTools:
                 try:
                     parsed_value = json.loads(stripped)
                 except (json.JSONDecodeError, ValueError):
-                    pass  # Keep as plain string
+                    logger.warning(
+                        "Value for '%s' looks like JSON (starts with '%s') but failed to parse. "
+                        "Storing as plain string — this may cause downstream errors.",
+                        key, stripped[0]
+                    )
 
         # Guard: Reject bare numeric values (Gemini serialization artifact).
         if isinstance(parsed_value, (int, float)) and not isinstance(parsed_value, bool):
@@ -1054,6 +1102,153 @@ class BibleTools:
 
         return report
 
+    async def discover_forbidden_knowledge(self) -> str:
+        """
+        Analyze the current World Bible to find gaps in forbidden knowledge coverage.
+
+        Cross-references:
+        - Canon timeline events after story_start_date (future spoilers)
+        - Character identities with is_public: false or hidden aliases
+        - Power origins with undisclosed techniques
+        - Character secrets not reflected in meta_knowledge_forbidden
+
+        Returns a structured gap report with suggested additions.
+        """
+        async with AsyncSessionLocal() as session:
+            stmt = select(WorldBible).where(WorldBible.story_id == self.story_id)
+            result = await session.execute(stmt)
+            bible = result.scalar_one_or_none()
+
+            if not bible or not bible.content:
+                return "Error: World Bible not found or empty."
+
+            data = bible.content
+
+        kb = data.get("knowledge_boundaries", {})
+        existing_forbidden = set(str(f).lower() for f in kb.get("meta_knowledge_forbidden", []))
+        existing_secrets = kb.get("character_secrets", {})
+        if isinstance(existing_secrets, str):
+            try:
+                existing_secrets = json.loads(existing_secrets)
+            except (json.JSONDecodeError, TypeError):
+                existing_secrets = {}
+
+        meta = data.get("meta", {})
+        start_date_str = meta.get("story_start_date", "")
+        start_dt = self._parse_date(start_date_str)
+
+        gaps: list[dict] = []
+
+        # 1. Future canon events (events after story start that characters shouldn't know)
+        canon_events = data.get("canon_timeline", {}).get("events", [])
+        for evt in canon_events:
+            event_text = evt.get("event", "")
+            if not event_text:
+                continue
+            # Check if event is in the future relative to story start
+            evt_dt = self._parse_date(evt.get("date", ""))
+            if start_dt and evt_dt and evt_dt > start_dt:
+                # Check if already covered
+                if not any(event_text.lower() in f or f in event_text.lower() for f in existing_forbidden):
+                    gaps.append({
+                        "category": "FUTURE_EVENTS",
+                        "suggestion": f"Future event: {event_text} ({evt.get('date', '?')})",
+                        "reason": "Canon event occurs after story start date — characters cannot know this will happen.",
+                    })
+
+        # 2. Hidden character identities
+        char_sheet = data.get("character_sheet", {})
+        identities = char_sheet.get("identities", {})
+        for identity_type, identity_val in identities.items() if isinstance(identities, dict) else []:
+            if isinstance(identity_val, dict) and not identity_val.get("is_public", True):
+                identity_name = identity_val.get("name", identity_type)
+                if not any(identity_name.lower() in f for f in existing_forbidden):
+                    gaps.append({
+                        "category": "HIDDEN_IDENTITIES",
+                        "suggestion": f"Hidden identity: {char_sheet.get('name', 'Protagonist')}'s {identity_type} identity '{identity_name}'",
+                        "reason": "Non-public identity must be protected from characters who don't know it.",
+                    })
+
+        # Check entity_aliases for hidden mappings
+        world_state = data.get("world_state", {})
+        entity_aliases = world_state.get("entity_aliases", {})
+        for canonical_name, aliases in entity_aliases.items() if isinstance(entity_aliases, dict) else []:
+            alias_list = aliases if isinstance(aliases, list) else [aliases]
+            for alias in alias_list:
+                connection = f"{alias} is {canonical_name}"
+                if not any(connection.lower() in f or canonical_name.lower() in f for f in existing_forbidden):
+                    gaps.append({
+                        "category": "HIDDEN_IDENTITIES",
+                        "suggestion": f"Identity connection: {alias} ↔ {canonical_name}",
+                        "reason": "Characters who only know one alias must not reference the other.",
+                    })
+
+        # 3. Undisclosed power techniques
+        power_origins = data.get("power_origins", {})
+        sources = power_origins.get("sources", [])
+        for src in sources:
+            techniques = (
+                src.get("signature_moves")
+                or src.get("canonical_techniques")
+                or src.get("canon_techniques")
+                or []
+            )
+            for tech in techniques:
+                tech_name = tech if isinstance(tech, str) else tech.get("name", str(tech))
+                # If the protagonist hides their true powers, each technique is a secret
+                if not any(tech_name.lower() in f for f in existing_forbidden):
+                    gaps.append({
+                        "category": "POWER_SECRETS",
+                        "suggestion": f"Undisclosed technique: {tech_name}",
+                        "reason": "If the protagonist's true power system is hidden, each technique is forbidden knowledge for other characters.",
+                    })
+
+        # 4. Character secrets not reflected in meta_knowledge_forbidden
+        for char_name, secret_list in existing_secrets.items():
+            if not secret_list:
+                continue
+            for entry in secret_list:
+                secret_text = entry.get("text", entry.get("secret", str(entry))) if isinstance(entry, dict) else str(entry)
+                if not any(secret_text.lower()[:30] in f for f in existing_forbidden):
+                    gaps.append({
+                        "category": "META_KNOWLEDGE",
+                        "suggestion": f"Unreflected secret: {char_name}'s secret '{secret_text[:80]}'",
+                        "reason": "Character secret exists but has no corresponding meta_knowledge_forbidden entry.",
+                    })
+
+        # Build report
+        if not gaps:
+            return (
+                "**Forbidden Knowledge Coverage: GOOD**\n\n"
+                f"Current count: {len(existing_forbidden)} forbidden items.\n"
+                "No obvious gaps detected. Coverage appears comprehensive."
+            )
+
+        report = f"**Forbidden Knowledge Gap Report**\n\n"
+        report += f"Current count: {len(existing_forbidden)} forbidden items.\n"
+        report += f"Gaps found: {len(gaps)}\n\n"
+
+        # Group by category
+        by_category: dict[str, list[dict]] = {}
+        for gap in gaps:
+            by_category.setdefault(gap["category"], []).append(gap)
+
+        for category, items in by_category.items():
+            report += f"**{category.replace('_', ' ')}** ({len(items)} gaps):\n"
+            for item in items[:10]:  # Cap per category
+                report += f"  + {item['suggestion']}\n"
+                report += f"    Reason: {item['reason']}\n"
+            if len(items) > 10:
+                report += f"  ... and {len(items) - 10} more\n"
+            report += "\n"
+
+        report += (
+            "**RECOMMENDED ACTION:** Use trigger_research() to research these gaps, "
+            "then update knowledge_boundaries.meta_knowledge_forbidden with the results."
+        )
+
+        return report
+
     async def compare_canon_to_story(self) -> str:
         """
         Compares canonical timeline events to story events.
@@ -1193,12 +1388,22 @@ Unaddressed:        {unaddressed_count}/{total}
 
             # From knowledge_boundaries
             secrets = content.get("knowledge_boundaries", {}).get("character_secrets", {})
+            if isinstance(secrets, str):
+                try:
+                    secrets = json.loads(secrets)
+                except (json.JSONDecodeError, TypeError):
+                    secrets = {}
             for name, data in secrets.items():
                 if character_name.lower() in name.lower():
                     profile["secrets"] = data
                     break
 
             knowledge = content.get("knowledge_boundaries", {}).get("character_knowledge_limits", {})
+            if isinstance(knowledge, str):
+                try:
+                    knowledge = json.loads(knowledge)
+                except (json.JSONDecodeError, TypeError):
+                    knowledge = {}
             for name, data in knowledge.items():
                 if character_name.lower() in name.lower():
                     profile["knowledge_limits"] = data
@@ -1384,10 +1589,10 @@ Unaddressed:        {unaddressed_count}/{total}
                                                 search_term in str(ex.get("scene", "")).lower()
                                             )
                                         ]
-                                        # Check current strain from usage_tracking
+                                        # Check current strain from usage_tracking (with fuzzy matching)
                                         usage_tracking = content.get("power_origins", {}).get("usage_tracking", {})
                                         power_key = source.get("power_name", source.get("name", ""))
-                                        strain_info = usage_tracking.get(power_key, {})
+                                        strain_info = _find_best_strain(power_key, usage_tracking)
                                         return json.dumps({
                                             "valid": True,
                                             "power": pname,
@@ -1410,7 +1615,7 @@ Unaddressed:        {unaddressed_count}/{total}
                                 if search_term in source_name or source_name in search_term:
                                     usage_tracking = content.get("power_origins", {}).get("usage_tracking", {})
                                     power_key = source.get("power_name", source.get("name", ""))
-                                    strain_info = usage_tracking.get(power_key, {})
+                                    strain_info = _find_best_strain(power_key, usage_tracking)
                                     return json.dumps({
                                         "valid": True,
                                         "power": pname,
@@ -1512,7 +1717,13 @@ Unaddressed:        {unaddressed_count}/{total}
                         })
 
             # 3. Check character_secrets — is this concept a secret hidden from this character?
-            for secret_holder, secret_data in kb.get("character_secrets", {}).items():
+            _cs = kb.get("character_secrets", {})
+            if isinstance(_cs, str):
+                try:
+                    _cs = json.loads(_cs)
+                except (json.JSONDecodeError, TypeError):
+                    _cs = {}
+            for secret_holder, secret_data in _cs.items():
                 if not isinstance(secret_data, dict):
                     continue
                 secret_text = secret_data.get("secret", "")

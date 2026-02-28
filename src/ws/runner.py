@@ -8,6 +8,7 @@ import re
 import uuid
 
 from fastapi import WebSocketDisconnect
+from starlette.websockets import WebSocketState
 from google.adk.runners import Runner
 from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.genai import types
@@ -23,6 +24,18 @@ from src.utils.logging_config import get_logger
 from src.ws.context import WsSessionContext
 
 _logger = get_logger("fable.ws.runner")
+
+# Exceptions that indicate the WebSocket is closed/gone
+_WS_CLOSED_ERRORS = (WebSocketDisconnect, RuntimeError)
+
+
+async def _safe_send(ctx: WsSessionContext, msg: dict) -> bool:
+    """Send JSON to WebSocket, returning False if the connection is dead."""
+    try:
+        await manager.send_json(msg, ctx.websocket)
+        return True
+    except _WS_CLOSED_ERRORS:
+        return False
 
 
 async def run_pipeline(ctx: WsSessionContext) -> None:
@@ -51,7 +64,7 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
     }
 
     # Run the Pipeline
-    await manager.send_json({"type": "status", "status": "processing"}, ctx.websocket)
+    await _safe_send(ctx, {"type": "status", "status": "processing"})
 
     buffer = ""
     ws_disconnected = False  # Track if client disconnected during streaming
@@ -71,12 +84,10 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
             await asyncio.sleep(settings.heartbeat_interval_seconds)
             if ws_disconnected:
                 return
-            try:
-                await manager.send_json({
-                    "type": "status",
-                    "status": "processing",
-                }, ctx.websocket)
-            except WebSocketDisconnect:
+            if not await _safe_send(ctx, {
+                "type": "status",
+                "status": "processing",
+            }):
                 return
 
     heartbeat_task = asyncio.create_task(heartbeat())
@@ -99,13 +110,11 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                     # Agent transition -> send WebSocket progress
                     if event_author and event_author != str(last_event_author or '').lower() and not ws_disconnected:
                         if last_event_author is not None:
-                            try:
-                                await manager.send_json({
-                                    "type": "status",
-                                    "status": "processing",
-                                    "detail": f"{event_author} starting...",
-                                }, ctx.websocket)
-                            except WebSocketDisconnect:
+                            if not await _safe_send(ctx, {
+                                "type": "status",
+                                "status": "processing",
+                                "detail": f"{event_author} starting...",
+                            }):
                                 ws_disconnected = True
                         last_event_author = event_author
 
@@ -123,13 +132,11 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                         if is_storyteller:
                             buffer += text_chunk
                             logger.log("output_chunk", text_chunk)
-                            try:
-                                await manager.send_json({
-                                    "type": "content_delta",
-                                    "text": text_chunk,
-                                    "sender": "storyteller"
-                                }, ctx.websocket)
-                            except WebSocketDisconnect:
+                            if not ws_disconnected and not await _safe_send(ctx, {
+                                "type": "content_delta",
+                                "text": text_chunk,
+                                "sender": "storyteller"
+                            }):
                                 # Client disconnected during streaming - continue to save chapter
                                 logger.log("warning", "WebSocket disconnected during streaming, will still save chapter")
                                 ws_disconnected = True
@@ -150,12 +157,10 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
         timeout_mins = settings.pipeline_timeout_seconds / 60
         logger.log("timeout", f"Pipeline timed out after {timeout_mins:.0f}m for story {ctx.story_id}", {"action": ctx.action})
         if not ws_disconnected:
-            try:
-                await manager.send_json({
-                    "type": "error",
-                    "message": f"Generation timed out after {timeout_mins:.0f} minutes. Any partial output has been saved. Please try again."
-                }, ctx.websocket)
-            except WebSocketDisconnect:
+            if not await _safe_send(ctx, {
+                "type": "error",
+                "message": f"Generation timed out after {timeout_mins:.0f} minutes. Any partial output has been saved. Please try again."
+            }):
                 ws_disconnected = True
     finally:
         heartbeat_task.cancel()
@@ -171,13 +176,11 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
     if not pipeline_timed_out and (not buffer or len(buffer.strip()) < 100):
         logger.log("warning", f"Storyteller produced minimal output ({len(buffer)} chars).", {"story_id": ctx.story_id, "action": ctx.action})
         if not buffer and not ws_disconnected:
-            try:
-                await manager.send_json({
-                    "type": "content_delta",
-                    "text": "\n\n\u26a0\ufe0f **Generation Issue**: The story agent did not produce narrative output. This may be due to context length or a timeout. Please try again or use /research first to populate the World Bible.\n",
-                    "sender": "system"
-                }, ctx.websocket)
-            except WebSocketDisconnect:
+            if not await _safe_send(ctx, {
+                "type": "content_delta",
+                "text": "\n\n\u26a0\ufe0f **Generation Issue**: The story agent did not produce narrative output. This may be due to context length or a timeout. Please try again or use /research first to populate the World Bible.\n",
+                "sender": "system"
+            }):
                 ws_disconnected = True
 
     # Extract structured JSON metadata from chapter output
@@ -197,15 +200,13 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
     })
 
     if not validation.meets_minimum and not ws_disconnected:
-        try:
-            await manager.send_json({
-                "type": "content_delta",
-                "text": f"\n\n⚠️ **Chapter Length Note**: This chapter is {validation.word_count} words "
-                        f"({settings.chapter_min_words}-{settings.chapter_max_words} target). "
-                        f"You can regenerate for a fuller narrative using the Regenerate button.\n",
-                "sender": "system"
-            }, ctx.websocket)
-        except WebSocketDisconnect:
+        if not await _safe_send(ctx, {
+            "type": "content_delta",
+            "text": f"\n\n⚠️ **Chapter Length Note**: This chapter is {validation.word_count} words "
+                    f"({settings.chapter_min_words}-{settings.chapter_max_words} target). "
+                    f"You can regenerate for a fuller narrative using the Regenerate button.\n",
+            "sender": "system"
+        }):
             ws_disconnected = True
 
     # --- Truncation detection ---
@@ -214,15 +215,13 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                     f"Possible output truncation: {len(buffer)} chars but no JSON metadata found. "
                     f"Tail: {buffer[-200:]}")
         if not ws_disconnected:
-            try:
-                await manager.send_json({
-                    "type": "content_delta",
-                    "text": "\n\n\u26a0\ufe0f **Note**: This chapter may have been cut short by a token limit. "
-                            "Choices and summary could not be extracted. You can continue "
-                            "the story by typing what happens next.\n",
-                    "sender": "system"
-                }, ctx.websocket)
-            except WebSocketDisconnect:
+            if not await _safe_send(ctx, {
+                "type": "content_delta",
+                "text": "\n\n\u26a0\ufe0f **Note**: This chapter may have been cut short by a token limit. "
+                        "Choices and summary could not be extracted. You can continue "
+                        "the story by typing what happens next.\n",
+                "sender": "system"
+            }):
                 ws_disconnected = True
 
     # Save History Item (Story History)
@@ -233,13 +232,33 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
         last_history = result.scalar_one_or_none()
         next_seq = (last_history.sequence + 1) if last_history else 1
 
+        # Merge question_answers into the choices field for persistence.
+        # This allows before_storyteller_model_callback to read them back for
+        # FK/timeline decision continuity across chapters.
+        persisted_choices = choices_json
+        if ctx.question_answers:
+            if isinstance(persisted_choices, list):
+                persisted_choices = {"choices": persisted_choices, "question_answers": ctx.question_answers}
+            elif isinstance(persisted_choices, dict):
+                persisted_choices["question_answers"] = ctx.question_answers
+            else:
+                persisted_choices = {"question_answers": ctx.question_answers}
+
+        if questions_json:
+            if isinstance(persisted_choices, list):
+                persisted_choices = {"choices": persisted_choices, "questions": questions_json}
+            elif isinstance(persisted_choices, dict):
+                persisted_choices["questions"] = questions_json
+            else:
+                persisted_choices = {"questions": questions_json}
+
         new_history = History(
             id=str(uuid.uuid4()),
             story_id=ctx.story_id,
             sequence=next_seq,
             text=buffer,
             summary=summary_text,
-            choices=choices_json,
+            choices=persisted_choices,
             bible_snapshot=ctx.bible_snapshot_content  # Bible state BEFORE this chapter (for undo)
         )
         db.add(new_history)
@@ -255,13 +274,11 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
 
     logger.log("turn_end", f"Turn complete for story {ctx.story_id}")
     if not ws_disconnected:
-        try:
-            # Include questions in turn_complete for frontend to display
-            turn_complete_msg = {"type": "turn_complete"}
-            if questions_json:
-                turn_complete_msg["questions"] = questions_json
-            await manager.send_json(turn_complete_msg, ctx.websocket)
-        except WebSocketDisconnect:
+        # Include questions in turn_complete for frontend to display
+        turn_complete_msg = {"type": "turn_complete"}
+        if questions_json:
+            turn_complete_msg["questions"] = questions_json
+        if not await _safe_send(ctx, turn_complete_msg):
             ws_disconnected = True
 
     if ws_disconnected:
@@ -362,7 +379,7 @@ async def _process_archivist_output(story_id: str, text_chunk: str, websocket=No
                         "recoverable": True,
                         "hint": "The Archivist rewrote the affected fields. Use 'undo' if the correction looks wrong.",
                     }, websocket)
-                except WebSocketDisconnect:
+                except _WS_CLOSED_ERRORS:
                     pass
 
         result = await apply_bible_delta(story_id, delta)

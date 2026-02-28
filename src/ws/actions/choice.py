@@ -23,6 +23,9 @@ from src.ws.actions import ActionResult
 async def handle_choice(ctx: WsSessionContext, inner_data: dict) -> ActionResult:
     choice_text = inner_data.get("choice", "")
     question_answers = inner_data.get("question_answers", {})
+    # Store question_answers on context so runner.py can persist them in History
+    if question_answers:
+        ctx.question_answers = question_answers
     # Fetch universes from World Bible for context continuity
     universes, deviation = await get_story_universes(ctx.story_id)
 
