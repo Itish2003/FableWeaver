@@ -4,11 +4,12 @@ export default function ConfigForm({ onInit, isConnecting }) {
   const [universes, setUniverses] = useState('Marvel, DC, Harry Potter');
   const [deviation, setDeviation] = useState('What if magic was technology?');
   const [userInput, setUserInput] = useState('');
+  const [useSourceText, setUseSourceText] = useState(true);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const universeList = universes.split(',').map(u => u.trim());
-    onInit(universeList, deviation, userInput);
+    onInit(universeList, deviation, userInput, { use_source_text: useSourceText });
   };
 
   return (
@@ -48,8 +49,22 @@ export default function ConfigForm({ onInit, isConnecting }) {
           />
         </div>
 
-        <button 
-          type="submit" 
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="useSourceText"
+            checked={useSourceText}
+            onChange={(e) => setUseSourceText(e.target.checked)}
+            className="w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500/50"
+          />
+          <label htmlFor="useSourceText" className="text-sm text-gray-400 select-none">
+            Use source text for canon events
+            <span className="block text-xs text-gray-500">Enriches event playbooks with actual novel/manga prose when available</span>
+          </label>
+        </div>
+
+        <button
+          type="submit"
           disabled={isConnecting}
           className="btn-primary w-full flex items-center justify-center gap-2"
         >

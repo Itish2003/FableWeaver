@@ -232,6 +232,22 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
         last_history = result.scalar_one_or_none()
         next_seq = (last_history.sequence + 1) if last_history else 1
 
+    # --- FK Question Injection (deterministic, post-generation) ---
+    # Detect forbidden-knowledge situations in the chapter text and inject
+    # rule-based FK questions alongside the Storyteller's own questions.
+    # Runs after next_seq is known to avoid a duplicate DB query.
+    try:
+        from src.utils.fk_detector import detect_fk_situations
+
+        fk_questions = await detect_fk_situations(ctx.story_id, buffer, next_seq)
+        if fk_questions:
+            questions_json = (questions_json or []) + fk_questions
+            _logger.info("Injected %d FK questions for story=%s ch=%d", len(fk_questions), ctx.story_id, next_seq)
+    except Exception:
+        _logger.debug("FK detection skipped (non-fatal)", exc_info=True)
+
+    # Re-open session for the actual save
+    async with AsyncSessionLocal() as db:
         # Merge question_answers into the choices field for persistence.
         # This allows before_storyteller_model_callback to read them back for
         # FK/timeline decision continuity across chapters.

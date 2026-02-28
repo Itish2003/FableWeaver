@@ -52,7 +52,8 @@ KEY MAPPINGS:
 - Characters → world_state.characters.<Name> (object with role, disposition, powers, universe)
 - Factions → world_state.factions.<Name> (object with type, description, members)
 - Locations → world_state.locations.<Name> (object with description, significance)
-- Timeline events → canon_timeline.events (array of event objects)
+- Timeline events → canon_timeline.events (array of event objects with "event", "date", "importance", "status", "characters_involved", "consequences")
+  For MAJOR events, include "event_playbook": {{"narrative_beats": [...], "character_behaviors": {{"Name": "behavior"}}, "emotional_arc": "...", "key_decisions": [...], "source": "..."}}
 
 RESEARCH TEXT:
 {combined_text}
@@ -172,7 +173,7 @@ class MetaTools:
             hunter = create_lore_hunter_swarm(specific_topics=[topic])
 
         # Use lightweight midstream lore keeper (simpler instruction, more reliable updates)
-        keeper = create_midstream_lore_keeper(self.story_id)
+        keeper = await create_midstream_lore_keeper(self.story_id)
 
         # Sequential: Hunter(s) -> Keeper
         pipeline = SequentialAgent(

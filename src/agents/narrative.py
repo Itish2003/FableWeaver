@@ -7,6 +7,7 @@ from src.config import get_settings
 from src.utils.resilient_gemini import ResilientGemini
 from src.tools.core_tools import BibleTools
 from src.callbacks import (
+    before_archivist_model_callback,
     before_storyteller_callback,
     make_timing_callbacks,
     tool_error_fallback,
@@ -713,6 +714,7 @@ async def create_archivist(story_id: str) -> Agent:
         output_key="bible_delta",  # Saves to session state for retrieval
         before_agent_callback=before_timing,
         after_agent_callback=after_timing,
+        before_model_callback=before_archivist_model_callback,
         # NOTE: No tools - output_schema disables all tools. Bible state is passed in prompt.
         instruction="""
 You are the ARCHIVIST of FableWeaver - Guardian of Narrative Continuity.
@@ -1137,6 +1139,15 @@ Divergences the auto-update missed entirely. Include:
   "affected_canon_events": ["Lung Fight", "Bank Heist", "Leviathan"]
 }
 ```
+
+**EVENT PLAYBOOK CONSUMPTION:**
+When a major canon event from canon_timeline has an `event_playbook` and that event
+has now OCCURRED or been MODIFIED in the story:
+→ Add an entry to `event_status_updates` with:
+  - `event_name`: The exact event name from canon_timeline
+  - `new_status`: "occurred" (played out as canon), "modified" (diverged), or "prevented"
+  - `notes`: Brief description of how the event played out
+This retires the event's playbook so it is NOT re-injected into future chapters.
 
 **RIPPLE EFFECT ANALYSIS:**
 When recording divergences, think about:

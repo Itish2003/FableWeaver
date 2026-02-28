@@ -179,23 +179,76 @@ async def tool_error_fallback(
 
 
 # ---------------------------------------------------------------------------
-# 4. Storyteller before-model callback (dynamic context injection)
+# 4. Archivist before-model callback (session history trimming)
+# ---------------------------------------------------------------------------
+
+async def before_archivist_model_callback(callback_context, llm_request):
+    """Trim accumulated session history to prevent exceeding Gemini's 1M token limit.
+
+    The ADK session accumulates every previous turn (each containing a full
+    World Bible JSON dump + chapter text + BibleDelta output).  After ~8-10
+    chapters this easily exceeds 1 048 576 tokens.  The Archivist only needs
+    the *current* turn's user message — which already contains the Bible
+    snapshot, chapter metadata, and the player's choice — so we slice the
+    contents list down to just that.
+    """
+    contents = llm_request.contents
+    if not contents or len(contents) <= 2:
+        return None
+
+    original_count = len(contents)
+
+    # Find the last user message — that's the current turn's input.
+    last_user_idx = None
+    for i in range(len(contents) - 1, -1, -1):
+        if getattr(contents[i], "role", None) == "user":
+            last_user_idx = i
+            break
+
+    if last_user_idx is not None and last_user_idx > 0:
+        llm_request.contents = contents[last_user_idx:]
+        logger.info(
+            "Trimmed Archivist session history: %d → %d messages",
+            original_count,
+            len(llm_request.contents),
+        )
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# 5. Storyteller before-model callback (dynamic context injection)
 # ---------------------------------------------------------------------------
 
 async def before_storyteller_model_callback(callback_context, llm_request):
-    """Inject dynamic chapter context and hard enforcement data into the Storyteller's LLM request.
+    """Trim session history then inject dynamic enforcement data into the Storyteller's LLM request.
 
-    Performs a single consolidated DB read to fetch chapter count, story config,
-    and the World Bible. From the Bible it extracts:
-    - Knowledge base index (for search_lore)
-    - Forbidden knowledge prohibitions
-    - Character secrets
-    - Upcoming canon events / timeline context
-    - Power combat reference (techniques, styles, weaknesses)
+    Session trimming: identical rationale to the Archivist callback — the ADK
+    session accumulates every prior turn (Bible dumps, tool calls, full
+    chapters).  The current turn's input_text already contains chapter
+    summaries, Bible state, and the player choice, and enforcement blocks are
+    rebuilt fresh below, so historical turns are redundant.
 
-    Each enforcement block is capped to limit token overhead and only injected
-    when non-empty.
+    Then performs a single consolidated DB read to fetch chapter count, story
+    config, and the World Bible, injecting enforcement blocks for: forbidden
+    knowledge, character secrets, upcoming canon events, power system, etc.
     """
+    # --- Trim accumulated session history (same strategy as Archivist) ---
+    contents = llm_request.contents
+    if contents and len(contents) > 2:
+        last_user_idx = None
+        for i in range(len(contents) - 1, -1, -1):
+            if getattr(contents[i], "role", None) == "user":
+                last_user_idx = i
+                break
+        if last_user_idx is not None and last_user_idx > 0:
+            llm_request.contents = contents[last_user_idx:]
+            logger.info(
+                "Trimmed Storyteller session history: %d → %d messages",
+                len(contents),
+                len(llm_request.contents),
+            )
+
     state = callback_context.state
     story_id = state.get("story_id")
     if not story_id:
@@ -243,8 +296,9 @@ async def before_storyteller_model_callback(callback_context, llm_request):
         f"Word target: {min_words}-{max_words} words",
     ]
 
-    # --- Fetch last chapter's question_answers for FK/timeline continuity ---
+    # --- Fetch last chapter's question_answers + questions for FK continuity ---
     last_qa: dict = {}
+    last_questions: list | None = None
     try:
         async with AsyncSessionLocal() as session:
             qa_stmt = (
@@ -257,6 +311,7 @@ async def before_storyteller_model_callback(callback_context, llm_request):
             last_history = qa_result.scalar_one_or_none()
             if last_history and last_history.choices and isinstance(last_history.choices, dict):
                 last_qa = last_history.choices.get("question_answers", {})
+                last_questions = last_history.choices.get("questions")
     except Exception:
         logger.debug("Could not fetch last chapter question_answers")
 
@@ -296,10 +351,26 @@ async def before_storyteller_model_callback(callback_context, llm_request):
             _build_protected_characters_block(bible_content)
         )
 
-        # 6. Previous chapter's player FK/timeline answers (carry forward)
+        # 6. CHARACTER BEHAVIOR & VOICES (personality, speech, mannerisms)
+        instructions.append(
+            _build_character_behavior_block(bible_content)
+        )
+
+        # 7. AUTO-ENRICH event playbooks from source text (lazy, one-time per event)
+        try:
+            await _maybe_enrich_event_playbooks(story_id, bible_content)
+        except Exception:
+            logger.debug("Event playbook auto-enrichment skipped", exc_info=True)
+
+        # 7b. EVENT PLAYBOOK (narrative beats for upcoming major events)
+        instructions.append(
+            _build_event_playbook_block(bible_content, chapter_count)
+        )
+
+        # 8. Previous chapter's player FK/timeline answers (carry forward)
         if last_qa:
             instructions.append(
-                _build_previous_qa_block(last_qa)
+                _build_previous_qa_block(last_qa, last_questions)
             )
 
     # Filter out empty strings (blocks that had no data)
@@ -317,6 +388,7 @@ _MAX_FORBIDDEN = 30
 _MAX_PER_CHARACTER_BLOCKS = 8
 _MAX_COMMON_VIOLATIONS = 5
 _MAX_POWER_SOURCES = 5
+_MAX_PLAYBOOK_EVENTS = 3
 
 # Timeline enforcement caps
 _MAX_MANDATORY_EVENTS = 5
@@ -327,6 +399,7 @@ _MAX_MEDIUM_EVENTS = 5
 _PAST_STATUSES = frozenset({
     "occurred", "modified", "prevented",
     "completed", "completed —",  # prefix match handled separately
+    "historical", "past",        # pre-story lore events from init pipeline
 })
 
 # Category keywords for forbidden knowledge classification
@@ -373,6 +446,23 @@ def _is_past_event(status: str) -> bool:
     if lower.startswith("completed"):
         return True
     return False
+
+
+def _is_pre_story_event(event: dict, story_start_dt) -> bool:
+    """Return True if an event clearly happened before the story began.
+
+    Catches lore events from the init pipeline (e.g., JJK Shibuya Incident
+    from 2018 in a 2095 Mahouka story) that the Lore Keeper tagged with
+    a wrong or missing status.  Uses a 7-day tolerance so events happening
+    right around the story start (like enrollment ceremonies) are kept.
+    """
+    if not story_start_dt:
+        return False
+    event_dt = _parse_story_date(event.get("date", ""))
+    if not event_dt:
+        return False
+    # If event is more than 7 days before story start, it's pre-story
+    return (story_start_dt - event_dt).days > 7
 
 
 # ---------------------------------------------------------------------------
@@ -958,17 +1048,56 @@ def _build_timeline_enforcement_block(bible: dict, chapter_count: int) -> str:
     return "\n".join(lines)
 
 
-def _build_previous_qa_block(last_qa: dict) -> str:
-    """Build a block carrying forward the player's FK/timeline answers from last chapter."""
+def _build_previous_qa_block(
+    last_qa: dict,
+    last_questions: list[dict] | None = None,
+) -> str:
+    """Build a block carrying forward the player's FK/timeline answers from last chapter.
+
+    When ``last_questions`` is provided (from ``History.choices.questions``),
+    each answer is paired with its original question text so the Storyteller
+    sees the full context.  FK answers are tagged with ``[FK]`` and
+    breakthrough/confirmed answers add an Archivist note.
+    """
     if not last_qa:
         return ""
+
+    # Build a question-text lookup from last_questions (index-keyed)
+    q_lookup: dict[str, str] = {}
+    q_category: dict[str, str] = {}
+    if last_questions and isinstance(last_questions, list):
+        for i, q in enumerate(last_questions):
+            if isinstance(q, dict):
+                q_lookup[str(i)] = q.get("question", "")
+                q_category[str(i)] = q.get("category", "")
 
     lines = [
         "\n\n══ PLAYER'S PREVIOUS CHAPTER DECISIONS ══",
         "The player made these FK/timeline decisions last chapter. RESPECT them:",
     ]
-    for idx, answer in sorted(last_qa.items(), key=lambda x: str(x[0])):
-        lines.append(f"  - Q{idx}: {answer}")
+
+    _FK_CONFIRMED_KEYWORDS = {"yes", "clue", "breakthrough", "confirmed", "slips through"}
+
+    for idx, answer in sorted(last_qa.items(), key=lambda x: (int(x[0]) if str(x[0]).isdigit() else float('inf'), str(x[0]))):
+        idx_str = str(idx)
+        is_fk = q_category.get(idx_str) == "forbidden_knowledge"
+        tag = " [FK]" if is_fk else ""
+
+        question_text = q_lookup.get(idx_str, "")
+        if question_text:
+            lines.append(f"  - Q: {question_text}")
+            lines.append(f"    A{tag}: {answer}")
+        else:
+            lines.append(f"  - Q{idx}{tag}: {answer}")
+
+        # If an FK answer indicates confirmation, tell the Archivist to update
+        if is_fk and isinstance(answer, str):
+            answer_lower = answer.lower()
+            if any(kw in answer_lower for kw in _FK_CONFIRMED_KEYWORDS):
+                lines.append(
+                    "    → [ARCHIVIST NOTE] Player confirmed FK breakthrough. "
+                    "Update knowledge_boundaries accordingly."
+                )
 
     lines.append(
         "These decisions remain in effect unless the player explicitly changes them."
@@ -1062,6 +1191,13 @@ def _build_power_enforcement_block(bible: dict, chapter_count: int) -> str:
     power_origins = bible.get("power_origins", {})
     sources = power_origins.get("sources", [])
     global_weaknesses = power_origins.get("weaknesses", [])
+
+    # Normalize sources: some stories store as dict {"Limitless": {...}} instead of list
+    if isinstance(sources, dict):
+        sources = [
+            {**v, "power_name": v.get("power_name", k)} if isinstance(v, dict) else {"power_name": k}
+            for k, v in sources.items()
+        ]
 
     if not sources and not global_weaknesses:
         return ""
@@ -1328,4 +1464,647 @@ def _build_protected_characters_block(bible: dict) -> str:
         "If the OC wins, it MUST be justified by specific counter, ambush, "
         "or significant cost."
     )
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 4g. Character behavior & voice enforcement
+# ---------------------------------------------------------------------------
+
+_MAX_VOICE_PROFILES = 10
+_MAX_RELATIONSHIP_ENTRIES = 10
+
+
+def _build_character_behavior_block(bible: dict) -> str:
+    """Build the CHARACTER BEHAVIOR & VOICES enforcement block.
+
+    Injects character_voices profiles (personality, speech patterns, verbal tics,
+    emotional tells, vocabulary level, topics to avoid/discuss, example dialogue)
+    and the protagonist's key relationships directly into the model context.
+
+    This ensures the Storyteller doesn't need to voluntarily call read_bible()
+    to access character behavior data — it's always present.
+    """
+    voices = bible.get("character_voices", {})
+    char_sheet = bible.get("character_sheet", {})
+    relationships = char_sheet.get("relationships", {})
+
+    if not voices and not relationships:
+        return ""
+
+    lines = [
+        "\n\n══ CHARACTER BEHAVIOR & VOICES — ENFORCEMENT ══",
+        "[!!!] Characters MUST behave according to these profiles. "
+        "Out-of-character behavior invalidates the chapter.",
+    ]
+
+    # --- Section 1: Voice profiles ---
+    if voices:
+        lines.append(f"\n▸ CHARACTER VOICE PROFILES ({min(len(voices), _MAX_VOICE_PROFILES)} characters):")
+
+        # Protagonist first, then sort the rest alphabetically
+        # Name may include kanji like "Kageaki Ren (蓮 影明)" — match by prefix
+        protagonist_full = char_sheet.get("name", "")
+        protagonist_key = ""
+        for vk in voices:
+            if vk in protagonist_full or protagonist_full in vk or protagonist_full.split("(")[0].strip() == vk:
+                protagonist_key = vk
+                break
+
+        sorted_names = sorted(voices.keys())
+        if protagonist_key and protagonist_key in sorted_names:
+            sorted_names.remove(protagonist_key)
+            sorted_names.insert(0, protagonist_key)
+
+        for char_name in sorted_names[:_MAX_VOICE_PROFILES]:
+            profile = voices[char_name]
+            if not isinstance(profile, dict):
+                continue
+
+            is_protagonist = char_name == protagonist_key
+            label = f"  [{char_name}]" + (" ★ PROTAGONIST" if is_protagonist else "")
+            lines.append(f"\n{label}")
+
+            # Personality
+            personality = profile.get("personality", "")
+            if personality:
+                # Strip extra quotes from LLM-generated strings
+                clean = str(personality).strip('"')
+                lines.append(f"    Personality: {clean}")
+
+            # Speech patterns
+            speech = profile.get("speech_patterns", "")
+            if speech:
+                if isinstance(speech, list):
+                    speech = ", ".join(str(s) for s in speech)
+                lines.append(f"    Speech: {speech}")
+
+            # Vocabulary level
+            vocab = profile.get("vocabulary_level", "")
+            if vocab:
+                lines.append(f"    Vocabulary: {vocab}")
+
+            # Verbal tics
+            tics = profile.get("verbal_tics", "")
+            if tics:
+                lines.append(f"    Verbal tics: {tics}")
+
+            # Emotional tells
+            tells = profile.get("emotional_tells", "")
+            if tells:
+                lines.append(f"    Emotional tells: {tells}")
+
+            # Example dialogue
+            example = profile.get("example_dialogue", "")
+            if example:
+                lines.append(f'    Example: "{example}"')
+
+            # Topics to avoid (critical for staying in character)
+            avoid = profile.get("topics_to_avoid", profile.get("topics_they_avoid", []))
+            if avoid:
+                if isinstance(avoid, list):
+                    avoid_str = "; ".join(str(a) for a in avoid)
+                else:
+                    avoid_str = str(avoid)
+                lines.append(f"    NEVER discusses: {avoid_str}")
+
+            # Topics to discuss
+            discuss = profile.get("topics_to_discuss", profile.get("topics_they_discuss", []))
+            if discuss:
+                if isinstance(discuss, list):
+                    discuss_str = "; ".join(str(d) for d in discuss)
+                else:
+                    discuss_str = str(discuss)
+                lines.append(f"    Naturally discusses: {discuss_str}")
+
+    # --- Section 2: Active relationships (protagonist's POV) ---
+    if relationships:
+        lines.append(f"\n▸ ACTIVE RELATIONSHIPS ({min(len(relationships), _MAX_RELATIONSHIP_ENTRIES)} entries):")
+        lines.append("  Write interactions consistent with these dynamics:")
+
+        # Sort by trust level (high first) then alphabetically
+        trust_order = {"high": 0, "medium": 1, "low": 2}
+        sorted_rels = sorted(
+            relationships.items(),
+            key=lambda kv: (
+                trust_order.get(kv[1].get("trust", "low") if isinstance(kv[1], dict) else "low", 3),
+                kv[0],
+            ),
+        )
+
+        for char_name, rel in sorted_rels[:_MAX_RELATIONSHIP_ENTRIES]:
+            if not isinstance(rel, dict):
+                continue
+            rel_type = rel.get("type", "unknown")
+            trust = rel.get("trust", "?")
+            dynamics = rel.get("dynamics", "")
+            relation = rel.get("relation", "")
+
+            tag = f"{rel_type.upper()}"
+            lines.append(f"  • {char_name} [{tag}, trust: {trust}] — {relation}")
+            if dynamics:
+                lines.append(f"    Dynamic: {dynamics}")
+
+    # --- Section 3: Behavioral rules ---
+    lines.append("\n▸ BEHAVIORAL RULES:")
+    lines.append("  ✘ Characters must NOT suddenly shift personality without narrative justification")
+    lines.append("  ✘ Dialogue must match documented speech_patterns and vocabulary_level")
+    lines.append("  ✘ Characters must NOT discuss their topics_to_avoid unless under extreme duress")
+    lines.append("  ✘ Emotional tells must appear when the documented triggers are present")
+    lines.append("  ✘ Relationship dynamics must match the documented trust level and type")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 4g. Auto-enrichment of event playbooks from source text
+# ---------------------------------------------------------------------------
+
+_MAX_ENRICHMENTS_PER_TURN = 1
+_MIN_BEATS_FOR_RICH_PLAYBOOK = 5
+
+
+def _match_volumes(
+    source_ref: str,
+    event_name: str,
+    available_volumes: list[str],
+) -> list[str]:
+    """Match an event to relevant source text volumes using the DB catalog.
+
+    Scores each available volume by:
+    1. Volume number match against source reference (e.g., "LN Vol 2" → Volume 02)
+    2. Arc keyword overlap between event name and volume name
+
+    Returns matched volume names sorted by relevance score (top 3).
+    """
+    if not available_volumes:
+        return []
+
+    # Parse target volume numbers from source reference
+    target_nums: set[int] = set()
+    if source_ref:
+        range_match = re.search(r'[Vv]ol(?:ume)?\.?\s*(\d+)\s*[-–]\s*(\d+)', source_ref)
+        if range_match:
+            target_nums = set(range(int(range_match.group(1)), int(range_match.group(2)) + 1))
+        else:
+            single_match = re.search(r'[Vv]ol(?:ume)?\.?\s*(\d+)', source_ref)
+            if single_match:
+                target_nums = {int(single_match.group(1))}
+
+    # Arc keywords from event name (drop stop words)
+    stop_words = {"the", "of", "at", "in", "a", "an", "and", "is", "was"}
+    event_words = set(event_name.lower().split()) - stop_words
+
+    scored: list[tuple[str, float]] = []
+    for vol_name in available_volumes:
+        score = 0.0
+
+        # Number match
+        vol_num_match = re.match(r'Volume (\d+)', vol_name)
+        if vol_num_match and int(vol_num_match.group(1)) in target_nums:
+            score += 10.0
+
+        # Arc keyword overlap
+        vol_words = set(vol_name.lower().split()) - stop_words - {
+            "volume", "i", "ii", "iii", "(i)", "(ii)", "(iii)",
+        }
+        overlap = event_words & vol_words
+        if overlap:
+            score += len(overlap) * 3.0
+
+        if score > 0:
+            scored.append((vol_name, score))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return [name for name, _ in scored[:3]]
+
+
+def _extract_relevant_sections(
+    full_text: str,
+    search_terms: list[str],
+    context_chars: int = 3000,
+    max_total: int = 15_000,
+) -> str:
+    """Extract sections from full volume text around keyword matches.
+
+    Searches for each term, takes ``context_chars`` of surrounding text,
+    merges overlapping ranges, and caps total output at ``max_total``.
+    """
+    text_lower = full_text.lower()
+    ranges: list[tuple[int, int]] = []
+
+    for term in search_terms:
+        if not term:
+            continue
+        term_lower = term.lower()
+        start_pos = 0
+        matches = 0
+        while matches < 3:
+            idx = text_lower.find(term_lower, start_pos)
+            if idx == -1:
+                break
+            r_start = max(0, idx - context_chars)
+            r_end = min(len(full_text), idx + len(term) + context_chars)
+            ranges.append((r_start, r_end))
+            start_pos = idx + len(term)
+            matches += 1
+
+    if not ranges:
+        return ""
+
+    # Merge overlapping ranges
+    ranges.sort()
+    merged = [ranges[0]]
+    for start, end in ranges[1:]:
+        if start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+
+    sections: list[str] = []
+    total = 0
+    for start, end in merged:
+        if total >= max_total:
+            break
+        section = full_text[start:end]
+        if start > 0:
+            section = "..." + section
+        if end < len(full_text):
+            section = section + "..."
+        sections.append(section)
+        total += len(section)
+
+    return "\n\n---\n\n".join(sections)
+
+
+async def _fetch_source_context(
+    universe: str,
+    event: dict,
+    available_volumes: list[tuple[str, int]],
+    max_chars: int = 30_000,
+) -> str:
+    """Fetch relevant source text context for an event from the DB.
+
+    Two-pronged, data-driven approach:
+    1. Keyword search across **all** volumes (discovers content regardless of
+       which volume it lives in)
+    2. Direct volume fetch + section extraction for volumes matched by the
+       DB catalog (number + arc-name scoring)
+
+    Returns combined context string, or empty string if nothing found.
+    """
+    from src.tools.source_text import search_source_text, get_source_text
+
+    event_name = event.get("event", "")
+    characters = event.get("characters_involved", [])
+    source_ref = event.get("source", "")
+
+    sections: list[str] = []
+
+    # 1. Search across all volumes by event name
+    result = await search_source_text(universe, event_name)
+    if not result.startswith("No matches") and not result.startswith("No source text"):
+        sections.append(f"=== Search: '{event_name}' ===\n{result}")
+
+    # 2. Search by key characters (surname for broader recall)
+    for char in characters[:2]:
+        surname = char.split()[-1] if " " in char else char
+        result = await search_source_text(universe, surname)
+        if not result.startswith("No matches"):
+            sections.append(f"=== Search: '{surname}' ===\n{result}")
+
+    # 3. Fetch from matched volumes using the DB catalog
+    vol_names = [v[0] for v in available_volumes]
+    matched = _match_volumes(source_ref, event_name, vol_names)
+    search_terms = [event_name] + characters[:3]
+    for vol_name in matched[:2]:
+        vol_text = await get_source_text(universe, vol_name)
+        # Skip error messages
+        if vol_text.startswith("No source text") or "not found" in vol_text[:80]:
+            continue
+        relevant = _extract_relevant_sections(vol_text, search_terms)
+        if relevant:
+            sections.append(f"=== {vol_name} (relevant sections) ===\n{relevant}")
+
+    combined = "\n\n".join(sections)
+    if len(combined) > max_chars:
+        combined = combined[:max_chars] + "\n...[truncated]"
+    return combined
+
+
+async def _llm_extract_playbook(
+    event_name: str,
+    source_context: str,
+    event: dict,
+) -> dict | None:
+    """Extract a rich event_playbook from source text via a direct Gemini call.
+
+    Returns a dict with narrative_beats, character_behaviors, emotional_arc,
+    key_decisions — or ``None`` if extraction fails.
+    """
+    from src.utils.resilient_client import ResilientClient
+    from src.utils.auth import get_api_key
+
+    characters = event.get("characters_involved", [])
+    significance = event.get("significance", event.get("description", ""))
+    consequences = event.get("consequences", [])
+
+    prompt = (
+        f"You are extracting a detailed event playbook from source novel text.\n\n"
+        f"EVENT: {event_name}\n"
+        f"CHARACTERS INVOLVED: {', '.join(characters) if characters else 'Unknown'}\n"
+        f"SIGNIFICANCE: {significance}\n"
+        f"CONSEQUENCES: {', '.join(str(c) for c in consequences) if isinstance(consequences, list) else str(consequences)}\n\n"
+        f"SOURCE TEXT EXCERPTS:\n{source_context}\n\n"
+        "Extract a detailed event playbook as a JSON object with:\n"
+        '- "narrative_beats": Array of 5-10 STRINGS (plain text, not objects). Each string is a '
+        "specific scene-level beat from the source text. Include exact details, dialogue references, "
+        "and turning points. Order chronologically.\n"
+        '- "character_behaviors": Object mapping character names to their specific '
+        "behavior/role during this event.\n"
+        '- "emotional_arc": String describing the emotional progression '
+        '(e.g., "Tension → Shock → Desperate defense → Pyrrhic victory").\n'
+        '- "key_decisions": Array of critical decision points that shaped the outcome.\n\n'
+        "Focus on SPECIFIC details from the source text, not generic summaries.\n"
+        "Output ONLY valid JSON. No markdown, no explanation."
+    )
+
+    client = ResilientClient(api_key=get_api_key())
+    try:
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        text = response.text.strip()
+
+        # Strip markdown code fences
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+        if text.endswith("```"):
+            text = text[:-3].strip()
+        if text.startswith("json"):
+            text = text[4:].strip()
+
+        playbook = json.loads(text)
+        if not isinstance(playbook, dict) or not playbook.get("narrative_beats"):
+            return None
+
+        # Normalize beats to plain strings (LLM sometimes returns dicts)
+        playbook["narrative_beats"] = [
+            b.get("description", str(b)) if isinstance(b, dict) else str(b)
+            for b in playbook["narrative_beats"]
+        ]
+        return playbook
+
+    except Exception as e:
+        logger.warning("Playbook extraction failed for '%s': %s", event_name, e)
+        return None
+
+
+async def _persist_bible_content(story_id: str, content: dict) -> None:
+    """Write updated Bible content back to the database."""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(WorldBible).where(WorldBible.story_id == story_id)
+        )
+        bible = result.scalar_one_or_none()
+        if bible:
+            bible.content = content
+            flag_modified(bible, "content")
+            await db.commit()
+
+
+async def _maybe_enrich_event_playbooks(
+    story_id: str, bible_content: dict
+) -> bool:
+    """Auto-enrich shallow event_playbooks from source text as major events approach.
+
+    Called from ``before_storyteller_model_callback``.  Finds upcoming
+    high-pressure events with missing / shallow playbooks, fetches relevant
+    source text from the DB, and extracts rich narrative beats via a direct
+    LLM call.
+
+    Rate-limited to ``_MAX_ENRICHMENTS_PER_TURN`` per turn.  Each event is
+    flagged with ``_source_enriched`` so it is never re-processed.
+    """
+    meta = bible_content.get("meta", {})
+    if not meta.get("use_source_text", True):
+        return False
+
+    canon_tl = bible_content.get("canon_timeline", {})
+    all_events = canon_tl.get("events", [])
+    if not all_events:
+        return False
+
+    current_date_str = meta.get("current_story_date", "")
+    current_dt_parsed = _parse_story_date(current_date_str)
+    protagonist_name = bible_content.get("character_sheet", {}).get("name", "")
+    story_start_dt = _parse_story_date(meta.get("story_start_date", ""))
+
+    # Identify events that need enrichment
+    candidates = []
+    for evt in all_events:
+        if _is_past_event(evt.get("status", "")):
+            continue
+        if _is_pre_story_event(evt, story_start_dt):
+            continue
+
+        playbook = evt.get("event_playbook")
+        if isinstance(playbook, dict) and playbook.get("_source_enriched"):
+            continue  # Already enriched or attempted
+
+        beats = playbook.get("narrative_beats", []) if isinstance(playbook, dict) else []
+        if len(beats) >= _MIN_BEATS_FOR_RICH_PLAYBOOK:
+            continue  # Rich enough already
+
+        pressure = _compute_pressure_score(
+            evt, current_dt_parsed, protagonist_name, all_events,
+        )
+        if pressure["pressure_score"] < 5.0 and not pressure["is_overdue"]:
+            continue
+
+        candidates.append((evt, pressure))
+
+    if not candidates:
+        return False
+
+    candidates.sort(key=lambda x: x[1]["pressure_score"], reverse=True)
+
+    # Query DB for available source text volumes (data-driven catalog)
+    event_universe = candidates[0][0].get("universe", "")
+    universe_key = event_universe.lower().strip() if event_universe else ""
+    if not universe_key:
+        return False
+
+    try:
+        from src.models import SourceText as _ST
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(_ST.volume, _ST.word_count)
+                .where(_ST.universe == universe_key)
+                .order_by(_ST.volume)
+            )
+            available_volumes = result.all()
+    except Exception:
+        return False
+
+    if not available_volumes:
+        return False
+
+    enriched_count = 0
+    for target_evt, target_pressure in candidates[:_MAX_ENRICHMENTS_PER_TURN]:
+        event_name = target_evt.get("event", "Unknown")
+
+        logger.info(
+            "Auto-enriching playbook for '%s' (pressure: %.1f)",
+            event_name, target_pressure["pressure_score"],
+        )
+
+        # Fetch relevant source text (search + volume fetch)
+        context = await _fetch_source_context(
+            universe_key, target_evt, available_volumes,
+        )
+        if not context:
+            target_evt.setdefault("event_playbook", {})["_source_enriched"] = "no_source_found"
+            continue
+
+        # Extract playbook via LLM
+        enriched = await _llm_extract_playbook(event_name, context, target_evt)
+        if not enriched:
+            target_evt.setdefault("event_playbook", {})["_source_enriched"] = "extraction_failed"
+            continue
+
+        # Merge: preserve existing fields, override with richer data
+        existing = target_evt.get("event_playbook") or {}
+        if isinstance(existing, dict):
+            enriched = {**existing, **enriched}
+        enriched["_source_enriched"] = True
+        target_evt["event_playbook"] = enriched
+        enriched_count += 1
+
+        logger.info(
+            "Enriched '%s': %d beats, %d character behaviors",
+            event_name,
+            len(enriched.get("narrative_beats", [])),
+            len(enriched.get("character_behaviors", {})),
+        )
+
+    # Always persist — even failure markers (_source_enriched = "no_source_found" /
+    # "extraction_failed") must be saved so we don't re-attempt every turn.
+    await _persist_bible_content(story_id, bible_content)
+
+    return enriched_count > 0
+
+
+# ---------------------------------------------------------------------------
+# 4h. Event playbook enforcement (narrative beats for upcoming major events)
+# ---------------------------------------------------------------------------
+
+def _build_event_playbook_block(bible: dict, chapter_count: int) -> str:
+    """Build the EVENT PLAYBOOK enforcement block for upcoming major events.
+
+    Extracts event_playbook data from canon_timeline events that are:
+    - Not yet past (status != occurred/modified/prevented)
+    - MANDATORY or HIGH priority (pressure >= 5.0)
+    - Have an event_playbook field populated
+
+    Injects narrative beats, character behaviors, emotional arc, and key
+    decisions so the Storyteller writes canonically-accurate event scenes.
+    Capped at _MAX_PLAYBOOK_EVENTS (3) to stay within token budget (~1500 tokens).
+    """
+    canon_tl = bible.get("canon_timeline", {})
+    all_events = canon_tl.get("events", [])
+    if not all_events:
+        return ""
+
+    meta = bible.get("meta", {})
+    current_date_str = meta.get("current_story_date", "")
+    current_dt_parsed = _parse_story_date(current_date_str)
+    protagonist_name = bible.get("character_sheet", {}).get("name", "")
+    story_start_dt = _parse_story_date(meta.get("story_start_date", ""))
+
+    # Filter to upcoming events with playbooks
+    candidates: list[tuple[dict, dict]] = []
+    for evt in all_events:
+        status = evt.get("status", "")
+        if _is_past_event(status):
+            continue
+        if _is_pre_story_event(evt, story_start_dt):
+            continue
+        playbook = evt.get("event_playbook")
+        if not playbook or not isinstance(playbook, dict):
+            continue
+
+        pressure = _compute_pressure_score(
+            evt, current_dt_parsed, protagonist_name, all_events,
+        )
+        # Only include MANDATORY (>= 7.0) or HIGH (>= 5.0) pressure events
+        if pressure["pressure_score"] >= 5.0 or pressure["is_overdue"]:
+            candidates.append((evt, pressure))
+
+    if not candidates:
+        return ""
+
+    # Sort by pressure descending, cap at max
+    candidates.sort(key=lambda x: x[1]["pressure_score"], reverse=True)
+    candidates = candidates[:_MAX_PLAYBOOK_EVENTS]
+
+    lines = [
+        "\n\n══ EVENT PLAYBOOK — NARRATIVE REFERENCE ══",
+        "These are detailed breakdowns of how upcoming canon events originally "
+        "played out. Use as your reference for writing canonically-accurate scenes.",
+    ]
+
+    for evt, pressure in candidates:
+        event_name = evt.get("event", "Unknown Event")
+        date_str = evt.get("date", "TBD")
+        p_score = pressure["pressure_score"]
+        overdue_tag = " ⚠ OVERDUE" if pressure["is_overdue"] else ""
+        playbook = evt["event_playbook"]
+
+        lines.append(
+            f"\n▸ {event_name} [{date_str}] (pressure: {p_score}{overdue_tag})"
+        )
+
+        # Narrative beats (normalize dicts to strings for clean injection)
+        beats = playbook.get("narrative_beats", [])
+        if beats:
+            lines.append("  Narrative beats:")
+            for i, beat in enumerate(beats, 1):
+                if isinstance(beat, dict):
+                    beat = beat.get("description", str(beat))
+                lines.append(f"    {i}. {beat}")
+
+        # Character behaviors (event-specific)
+        behaviors = playbook.get("character_behaviors", {})
+        if behaviors and isinstance(behaviors, dict):
+            lines.append("  Character behaviors (event-specific):")
+            for char, behavior in behaviors.items():
+                lines.append(f"    • {char}: {behavior}")
+
+        # Emotional arc
+        arc = playbook.get("emotional_arc", "")
+        if arc:
+            lines.append(f"  Emotional arc: {arc}")
+
+        # Key decisions
+        decisions = playbook.get("key_decisions", [])
+        if decisions:
+            lines.append("  Key decisions:")
+            for decision in decisions:
+                lines.append(f"    → {decision}")
+
+        # Source reference
+        source = playbook.get("source", "")
+        if source:
+            lines.append(f"  Source: {source}")
+
+    lines.append(
+        "\nUse this as your reference. You may diverge from canon beats, but "
+        "divergences must be justified by prior story events or player choices."
+    )
+
     return "\n".join(lines)

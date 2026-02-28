@@ -20,6 +20,8 @@ from .world_bible_schemas import (
     # Violation tracking schemas
     KnowledgeViolation,
     PowerScalingViolation,
+    # Event lifecycle
+    EventStatusUpdate,
     # Lore Keeper output schema
     LoreKeeperOutput,
 )
@@ -76,6 +78,8 @@ __all__ = [
     # Violation tracking schemas
     "KnowledgeViolation",
     "PowerScalingViolation",
+    # Event lifecycle
+    "EventStatusUpdate",
     # Lore Keeper output schema
     "LoreKeeperOutput",
     # Complete World Bible Schema (Issue #11)

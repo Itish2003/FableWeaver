@@ -154,6 +154,7 @@ function App() {
                       genre: config.story_tone || 'balanced',
                       theme: config.themes?.join(', ') || '',
                       timeline_deviation: config.power_level || '',
+                      use_source_text: config.use_source_text ?? true,
                     });
                   }, 500);
                 }} isConnecting={false} />

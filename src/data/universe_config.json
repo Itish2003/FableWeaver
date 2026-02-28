@@ -72,6 +72,15 @@
       "display_names": ["DC"],
       "wiki_url": "site:dc.fandom.com",
       "leakage_terms": []
+    },
+    "mahouka": {
+      "display_names": ["Irregular at Magic High School", "Mahouka", "Mahouka Koukou no Rettousei"],
+      "wiki_url": "site:mahouka-koukou-no-rettousei.fandom.com",
+      "leakage_terms": [],
+      "source_text_hints": {
+        "type": "light_novel",
+        "key_arcs": ["Enrollment Arc", "Nine Schools Competition", "Yokohama Disturbance"]
+      }
     }
   }
 }

@@ -54,6 +54,20 @@ def get_all_leakage_terms() -> Dict[str, List[str]]:
     }
 
 
+def get_source_text_hints(universe_name: str) -> Optional[dict]:
+    """
+    Return the ``source_text_hints`` dict for *universe_name*, or ``None``
+    if the universe has no source text configuration.
+    """
+    universes = _load_raw().get("universes", {})
+    name_lower = universe_name.lower()
+    for cfg in universes.values():
+        for display in cfg.get("display_names", []):
+            if display.lower() in name_lower or name_lower in display.lower():
+                return cfg.get("source_text_hints")
+    return None
+
+
 def get_wiki_hint(universe_name: str) -> Optional[str]:
     """
     Return the ``site:`` search hint for *universe_name*, or ``None`` if

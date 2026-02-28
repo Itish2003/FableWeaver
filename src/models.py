@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import String, DateTime, ForeignKey, Text, JSON, Integer, UniqueConstraint
+from sqlalchemy import String, DateTime, ForeignKey, Text, JSON, Integer, UniqueConstraint, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -74,6 +74,26 @@ class WorldBible(Base):
     server_log_mirror: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Store recent logs or full log dump? keeping it simple for now.
 
     story: Mapped["Story"] = relationship("Story", back_populates="world_bible")
+
+class SourceText(Base):
+    """Stores extracted text from PDFs (light novels, web novels) as a universe-level resource.
+
+    Keyed by (universe, volume) so the same text is reusable across stories.
+    """
+    __tablename__ = "source_text"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    universe: Mapped[str] = mapped_column(String, index=True)
+    volume: Mapped[str] = mapped_column(String)
+    content: Mapped[str] = mapped_column(Text)
+    word_count: Mapped[int] = mapped_column(Integer, default=0)
+    source_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("universe", "volume", name="uix_source_text_universe_volume"),
+    )
+
 
 # ADK session/event tables are now managed by google.adk.sessions.DatabaseSessionService.
 

@@ -26,6 +26,7 @@ export default function SetupWizard({ onInit, isConnecting }) {
     research_focus: [],
     power_limitations: '',
     user_context: '',
+    use_source_text: true,
   });
 
   const [conversation, setConversation] = useState([]);
@@ -185,6 +186,7 @@ export default function SetupWizard({ onInit, isConnecting }) {
           setStep(Steps.CLARIFICATION);
           setQuestionIndex(questionIndex - 1);
         }}
+        onConfigChange={(key, value) => setConfig(prev => ({ ...prev, [key]: value }))}
         loading={loading}
       />
     );
@@ -310,7 +312,7 @@ function ClarificationDialog({ conversation, currentQuestion, userAnswer, onAnsw
   );
 }
 
-function ReviewStep({ config, summary, onConfirm, onRevise, loading }) {
+function ReviewStep({ config, summary, onConfirm, onRevise, onConfigChange, loading }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel p-8 max-w-2xl mx-auto">
       <div className="mb-8">
@@ -347,6 +349,21 @@ function ReviewStep({ config, summary, onConfirm, onRevise, loading }) {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Chapter Length</p>
           <p className="text-white font-medium">{config.chapter_min_words.toLocaleString()}–{config.chapter_max_words.toLocaleString()} words</p>
         </div>
+      </div>
+
+      {/* Source text toggle */}
+      <div className="flex items-center gap-3 mb-6 bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
+        <input
+          type="checkbox"
+          id="useSourceText"
+          checked={config.use_source_text ?? true}
+          onChange={(e) => onConfigChange('use_source_text', e.target.checked)}
+          className="w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500/50"
+        />
+        <label htmlFor="useSourceText" className="text-sm text-gray-300 select-none">
+          Use source text for canon events
+          <span className="block text-xs text-gray-500">Enriches event playbooks with actual novel/manga prose when available</span>
+        </label>
       </div>
 
       {/* Buttons */}

@@ -36,6 +36,7 @@ async def handle_init(ctx: WsSessionContext, inner_data: dict) -> ActionResult:
             bible.content["meta"]["timeline_deviation"] = deviation
             bible.content["meta"]["genre"] = inner_data.get("genre", "Fantasy")
             bible.content["meta"]["theme"] = inner_data.get("theme", "Mystery")
+            bible.content["meta"]["use_source_text"] = inner_data.get("use_source_text", True)
             flag_modified(bible, "content")
             await db.commit()
             # Read setup conversation persisted by /confirm

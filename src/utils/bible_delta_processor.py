@@ -67,6 +67,7 @@ async def apply_bible_delta(story_id: str, delta: BibleDelta) -> Dict[str, Any]:
             _apply_knowledge_violations(content, delta, results)
             _apply_power_scaling_violations(content, delta, results)
             _apply_power_usage_updates(content, delta, results)
+            _apply_event_status_updates(content, delta, results)
 
             # Save if we made updates
             if results["updates_applied"]:
@@ -517,3 +518,65 @@ def _find_matching_entry(entries: list, new_entry: dict, match_fields: list, fuz
         if exact_matches and fuzzy_matches:
             return i
     return None
+
+
+def _apply_event_status_updates(content: dict, delta, results: dict):
+    """Apply canon_timeline event status transitions.
+
+    When the Archivist reports that a canon event has occurred, been modified,
+    or was prevented, update its status in-place.  This retires the event's
+    playbook from future Storyteller injection (the injection block skips
+    events with past statuses).
+
+    Matching uses case-insensitive fuzzy comparison — the Archivist only needs
+    to provide a recognisable prefix of the event name.
+    """
+    if not hasattr(delta, "event_status_updates") or not delta.event_status_updates:
+        return
+
+    canon_tl = content.get("canon_timeline", {})
+    events = canon_tl.get("events", [])
+    if not events:
+        return
+
+    for update in delta.event_status_updates:
+        event_name = update.event_name.strip().lower()
+        new_status = update.new_status.strip().lower()
+        notes = update.notes
+
+        # Find the event — exact then fuzzy (prefix) match
+        matched_evt = None
+        for evt in events:
+            if evt.get("event", "").strip().lower() == event_name:
+                matched_evt = evt
+                break
+
+        if not matched_evt and len(event_name) >= 10:
+            # Fuzzy: match on first 20 chars or significant word overlap
+            for evt in events:
+                evt_lower = evt.get("event", "").strip().lower()
+                if evt_lower.startswith(event_name[:20]):
+                    matched_evt = evt
+                    break
+                # Word overlap check
+                update_words = set(event_name.split())
+                evt_words = set(evt_lower.split())
+                overlap = len(update_words & evt_words)
+                if overlap >= min(len(update_words), len(evt_words)) * 0.6:
+                    matched_evt = evt
+                    break
+
+        if matched_evt:
+            old_status = matched_evt.get("status", "")
+            matched_evt["status"] = new_status
+            if notes:
+                matched_evt["status_notes"] = notes
+            results["updates_applied"].append(
+                f"event_status: '{matched_evt['event']}' {old_status} → {new_status}"
+            )
+            logger.info(
+                "Event status: '%s' → %s", matched_evt["event"], new_status,
+            )
+        else:
+            results["errors"].append(f"Event not found for status update: {update.event_name}")
+            logger.warning("Event not found for status update: %s", update.event_name)

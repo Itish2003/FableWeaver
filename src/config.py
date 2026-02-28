@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # ReflectAndRetryToolPlugin retry count for tool failures
     tool_retry_max_attempts: int = 3
 
+    # Max characters to retain from scraped web pages
+    scrape_max_chars: int = 80_000
+
     # Bible schema validation mode for update_bible()
     # "warn": log warning but do not block write (safe for production)
     # "error": log error but do not block write (for monitoring)

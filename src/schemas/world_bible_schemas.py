@@ -371,6 +371,24 @@ class PowerScalingViolation(GeminiCompatibleModel):
     )
 
 
+class EventStatusUpdate(GeminiCompatibleModel):
+    """Update the status of a canon_timeline event after it occurs in the story."""
+    model_config = ConfigDict(extra="forbid")
+
+    event_name: str = Field(
+        ...,
+        description="The exact event name from canon_timeline.events"
+    )
+    new_status: str = Field(
+        ...,
+        description="New status: 'occurred' (played out as canon), 'modified' (diverged), or 'prevented'"
+    )
+    notes: Optional[str] = Field(
+        default=None,
+        description="Brief note on how the event played out or diverged"
+    )
+
+
 class BibleDelta(GeminiCompatibleModel):
     """
     Structured output schema for the Archivist agent.
@@ -468,6 +486,12 @@ class BibleDelta(GeminiCompatibleModel):
     power_usage_updates: List[PowerUsageEntry] = Field(
         default_factory=list,
         description="Power strain updates from this chapter. Track ALL powers used with their resulting strain level."
+    )
+
+    # Canon timeline event status transitions
+    event_status_updates: List[EventStatusUpdate] = Field(
+        default_factory=list,
+        description="Mark canon events as 'occurred', 'modified', or 'prevented' when they happen in the story. This retires the event's playbook from future injection."
     )
 
     # Brief summary for logging
