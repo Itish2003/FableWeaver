@@ -179,7 +179,112 @@ async def tool_error_fallback(
 
 
 # ---------------------------------------------------------------------------
-# 4. Archivist before-model callback (session history trimming)
+# 4. Shared session history trimming (preserves function-call pairs)
+# ---------------------------------------------------------------------------
+
+def _trim_to_current_turn(contents: list, agent_label: str) -> list:
+    """Trim session history to the current turn while preserving function-call pairs.
+
+    The ADK session accumulates every prior agent's turns.  For both the
+    Archivist and Storyteller the current turn's user message already
+    contains everything needed (Bible state, chapter context, player choice),
+    and enforcement blocks are rebuilt fresh by the model callback.
+
+    Key invariant: Gemini requires that (1) conversations start with a
+    ``user`` turn, and (2) every ``function_call`` model turn is immediately
+    followed by a ``function_response`` user turn.
+
+    Important: in Gemini's wire format ``function_response`` parts carry
+    ``role="user"``.  A naive "find last user message" therefore matches tool
+    responses from prior agents (research swarm, lore keeper) instead of the
+    actual user input, producing a trimmed list that starts with a ``model``
+    turn → 400 INVALID_ARGUMENT from Gemini.
+
+    We fix this by scanning for the last user message that contains actual
+    **text** (not just ``function_response`` parts), then keeping everything
+    from that point onward.  A post-trim validation strips any orphaned
+    ``function_call``/``function_response`` pairs that slipped through.
+    """
+    if not contents or len(contents) <= 2:
+        return contents
+
+    original_count = len(contents)
+
+    # Find the last REAL user message — one with text, not just function_response.
+    last_user_idx = None
+    for i in range(len(contents) - 1, -1, -1):
+        msg = contents[i]
+        if getattr(msg, "role", None) != "user":
+            continue
+        parts = getattr(msg, "parts", None) or []
+        has_real_text = any(
+            getattr(p, "text", None)
+            for p in parts
+            if getattr(p, "function_response", None) is None
+        )
+        if has_real_text:
+            last_user_idx = i
+            break
+
+    if last_user_idx is None or last_user_idx == 0:
+        return contents
+
+    trimmed = contents[last_user_idx:]
+
+    # Post-trim validation: strip orphaned function_call/function_response pairs
+    trimmed = _strip_orphaned_fc_pairs(trimmed)
+
+    if len(trimmed) < original_count:
+        logger.info(
+            "Trimmed %s session history: %d → %d messages",
+            agent_label, original_count, len(trimmed),
+        )
+    return trimmed
+
+
+def _strip_orphaned_fc_pairs(contents: list) -> list:
+    """Remove model messages with orphaned function_call parts.
+
+    Walks the contents list and ensures every ``model`` message containing
+    ``function_call`` parts is immediately followed by a ``user`` message
+    with ``function_response`` parts.  Unpaired messages are dropped.
+    """
+    result: list = []
+    i = 0
+    while i < len(contents):
+        msg = contents[i]
+        parts = getattr(msg, "parts", None) or []
+        has_fc = any(
+            getattr(p, "function_call", None) is not None for p in parts
+        )
+
+        if getattr(msg, "role", None) == "model" and has_fc:
+            # Model with function_call — keep only if next message is function_response
+            if i + 1 < len(contents):
+                next_msg = contents[i + 1]
+                next_parts = getattr(next_msg, "parts", None) or []
+                has_fr = any(
+                    getattr(p, "function_response", None) is not None
+                    for p in next_parts
+                )
+                if has_fr:
+                    result.append(msg)
+                    result.append(next_msg)
+                    i += 2
+                    continue
+            # Orphaned function_call — drop it
+            logger.debug("Stripped orphaned function_call from %s history", "trim")
+            i += 1
+            continue
+
+        result.append(msg)
+        i += 1
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# 4a. Archivist before-model callback (session history trimming)
 # ---------------------------------------------------------------------------
 
 async def before_archivist_model_callback(callback_context, llm_request):
@@ -192,27 +297,9 @@ async def before_archivist_model_callback(callback_context, llm_request):
     snapshot, chapter metadata, and the player's choice — so we slice the
     contents list down to just that.
     """
-    contents = llm_request.contents
-    if not contents or len(contents) <= 2:
-        return None
-
-    original_count = len(contents)
-
-    # Find the last user message — that's the current turn's input.
-    last_user_idx = None
-    for i in range(len(contents) - 1, -1, -1):
-        if getattr(contents[i], "role", None) == "user":
-            last_user_idx = i
-            break
-
-    if last_user_idx is not None and last_user_idx > 0:
-        llm_request.contents = contents[last_user_idx:]
-        logger.info(
-            "Trimmed Archivist session history: %d → %d messages",
-            original_count,
-            len(llm_request.contents),
-        )
-
+    llm_request.contents = _trim_to_current_turn(
+        llm_request.contents, "Archivist"
+    )
     return None
 
 
@@ -233,21 +320,10 @@ async def before_storyteller_model_callback(callback_context, llm_request):
     config, and the World Bible, injecting enforcement blocks for: forbidden
     knowledge, character secrets, upcoming canon events, power system, etc.
     """
-    # --- Trim accumulated session history (same strategy as Archivist) ---
-    contents = llm_request.contents
-    if contents and len(contents) > 2:
-        last_user_idx = None
-        for i in range(len(contents) - 1, -1, -1):
-            if getattr(contents[i], "role", None) == "user":
-                last_user_idx = i
-                break
-        if last_user_idx is not None and last_user_idx > 0:
-            llm_request.contents = contents[last_user_idx:]
-            logger.info(
-                "Trimmed Storyteller session history: %d → %d messages",
-                len(contents),
-                len(llm_request.contents),
-            )
+    # --- Trim accumulated session history (preserves function-call pairs) ---
+    llm_request.contents = _trim_to_current_turn(
+        llm_request.contents, "Storyteller"
+    )
 
     state = callback_context.state
     story_id = state.get("story_id")

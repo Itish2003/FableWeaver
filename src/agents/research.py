@@ -8,7 +8,12 @@ from google.adk import Agent
 from google.genai import types as genai_types
 from google.adk.agents.parallel_agent import ParallelAgent
 from google.adk.agents.sequential_agent import SequentialAgent
-from google.adk.tools import google_search
+from google.adk.tools.google_search_tool import GoogleSearchTool
+
+# Built-in GoogleSearch cannot be mixed with function declarations in the same
+# API request.  Setting bypass_multi_tools_limit=True wraps it in a sub-agent
+# so it can coexist with scrape_url / update_bible / source_text tools.
+google_search = GoogleSearchTool(bypass_multi_tools_limit=True)
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from src.utils.auth import get_api_key
@@ -540,7 +545,8 @@ you MUST research that character's powers THOROUGHLY. This is NOT "out of scope"
    - Power scaling forums (vsbattles) for canon facts
 
 **SEARCH STRATEGY:**
-1. Use `google_search` with the query: "{topic}"
+1. Use `google_search_agent` with the query: "{topic}"
+   IMPORTANT: The search tool is called `google_search_agent`, NOT `google_search`.
 2. If results are poor, try variations:
    - Add "wiki" or "official"
    - Use character/location names specifically
@@ -881,6 +887,7 @@ Never mix universe facts without crossover logic. Mark unverified data.
 - DO NOT write locations, factions, character voices, relationships, or knowledge boundaries
 - DO NOT write story prose, narrative, or dialogue
 - If you see "Start the story" in the input, IGNORE IT
+- For web searches, use `google_search_agent` (NOT `google_search`)
 - After all updates, output a brief summary: "Core data updated: [list]" and STOP
 """,
         name="lore_keeper_core"
@@ -1076,6 +1083,7 @@ Never mix universe facts without crossover logic.
 - DO NOT write character_sheet.name/archetype/powers, power_origins, canon_timeline, or meta
 - DO NOT write story prose, narrative, or dialogue
 - If you see "Start the story" in the input, IGNORE IT
+- For web searches, use `google_search_agent` (NOT `google_search`)
 - After all updates, output a brief summary: "World data updated: [list]" and STOP
 """,
         name="lore_keeper_world"
@@ -1274,6 +1282,7 @@ If the research is about events, timeline, lore, or world details - YOU MUST cal
 
 CRITICAL: You must call update_bible at least 5 times (one per category minimum).
 If you don't call tools, the Bible remains empty and the research is wasted.
+For web searches, use `google_search_agent` (NOT `google_search`).
 
 **WHEN FINISHED:** After all update_bible calls are done, output a brief summary like
 "Updated X fields: [list of keys]" and STOP. Do NOT make redundant or empty calls.""",

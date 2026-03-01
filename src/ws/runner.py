@@ -95,7 +95,7 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
     try:
         async with asyncio.timeout(settings.pipeline_timeout_seconds):
             async with runner:
-                last_event_author = None
+                seen_authors: set[str] = set()
                 async for event in runner.run_async(
                     user_id=ctx.user_id,
                     session_id=ctx.agent_session_id,
@@ -107,16 +107,16 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
                     event_author = str(getattr(event, 'author', '') or '').lower()
                     is_storyteller = "storyteller" in event_author or "story_teller" in event_author or "narrator" in event_author
 
-                    # Agent transition -> send WebSocket progress
-                    if event_author and event_author != str(last_event_author or '').lower() and not ws_disconnected:
-                        if last_event_author is not None:
+                    # Agent transition -> send WebSocket progress (once per agent)
+                    if event_author and event_author not in seen_authors and not ws_disconnected:
+                        seen_authors.add(event_author)
+                        if len(seen_authors) > 1:
                             if not await _safe_send(ctx, {
                                 "type": "status",
                                 "status": "processing",
                                 "detail": f"{event_author} starting...",
                             }):
                                 ws_disconnected = True
-                        last_event_author = event_author
 
                     # Log pipeline event flow
                     has_content = bool(getattr(event, 'content', None) or getattr(event, 'text', None))
