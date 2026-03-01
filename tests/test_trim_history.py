@@ -217,6 +217,66 @@ class TestTrimToCurrentTurn:
         assert len(result) == 2
         assert result[0] is mixed
 
+    # -------------------------------------------------------------------
+    # keep_turns > 1
+    # -------------------------------------------------------------------
+
+    def test_keep_turns_preserves_multiple_turns(self):
+        """keep_turns=3 preserves the last 3 real user turns."""
+        msgs = [
+            user_text("turn 1"),          # real user #1
+            model_text("chapter 1"),
+            user_text("turn 2"),          # real user #2
+            model_text("chapter 2"),
+            user_text("turn 3"),          # real user #3
+            model_text("chapter 3"),
+            user_text("turn 4"),          # real user #4
+            model_text("chapter 4"),
+        ]
+        result = _trim_to_current_turn(msgs, "test", keep_turns=3)
+        # Should keep from "turn 2" onward (turns 2, 3, 4 = 3 turns)
+        assert len(result) == 6
+        assert result[0].parts[0].text == "turn 2"
+
+    def test_keep_turns_with_interleaved_tool_calls(self):
+        """keep_turns skips function_response-only user messages correctly."""
+        msgs = [
+            user_text("turn 1"),
+            model_text("chapter 1"),
+            user_text("turn 2"),
+            model_fc("update_bible"),
+            user_fr("update_bible"),          # NOT a real user turn
+            model_text("chapter 2"),
+            user_text("turn 3"),
+            model_text("chapter 3"),
+        ]
+        result = _trim_to_current_turn(msgs, "test", keep_turns=2)
+        # Real user msgs: "turn 1" (idx 0), "turn 2" (idx 2), "turn 3" (idx 6)
+        # keep_turns=2 → start from "turn 2" (idx 2)
+        assert len(result) == 6
+        assert result[0].parts[0].text == "turn 2"
+
+    def test_keep_turns_more_than_available(self):
+        """keep_turns exceeding available turns returns all contents."""
+        msgs = [
+            user_text("only turn"),
+            model_text("response"),
+        ]
+        result = _trim_to_current_turn(msgs, "test", keep_turns=5)
+        assert result == msgs
+
+    def test_keep_turns_default_is_one(self):
+        """Default keep_turns=1 preserves only the last real user turn."""
+        msgs = [
+            user_text("turn 1"),
+            model_text("chapter 1"),
+            user_text("turn 2"),
+            model_text("chapter 2"),
+        ]
+        result = _trim_to_current_turn(msgs, "test")
+        assert len(result) == 2
+        assert result[0].parts[0].text == "turn 2"
+
 
 # ---------------------------------------------------------------------------
 # Tests: _strip_orphaned_fc_pairs

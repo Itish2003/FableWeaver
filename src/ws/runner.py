@@ -244,7 +244,7 @@ async def run_pipeline(ctx: WsSessionContext) -> None:
             questions_json = (questions_json or []) + fk_questions
             _logger.info("Injected %d FK questions for story=%s ch=%d", len(fk_questions), ctx.story_id, next_seq)
     except Exception:
-        _logger.debug("FK detection skipped (non-fatal)", exc_info=True)
+        _logger.warning("FK detection failed (non-fatal)", exc_info=True)
 
     # Re-open session for the actual save
     async with AsyncSessionLocal() as db:

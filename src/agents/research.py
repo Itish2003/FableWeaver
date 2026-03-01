@@ -1145,7 +1145,7 @@ async def create_midstream_lore_keeper(story_id: str) -> Agent:
                 )
             )
         ),
-        instruction="""
+        instruction=f"""
 You are a LORE KEEPER performing a MID-STREAM research update.
 
 Your task is SIMPLE: Extract data from the research above and save it to the World Bible.

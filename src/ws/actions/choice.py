@@ -101,24 +101,35 @@ async def handle_choice(ctx: WsSessionContext, inner_data: dict) -> ActionResult
             "sender": "system"
         }, ctx.websocket)
 
-    # Get current chapter count AND recent summaries for context
+    # Get current chapter count, recent summaries, and last chapter full text
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(History).where(History.story_id == ctx.story_id).order_by(desc(History.sequence)).limit(3)
+            select(History).where(History.story_id == ctx.story_id).order_by(desc(History.sequence)).limit(5)
         )
         recent_chapters = result.scalars().all()
 
         current_chapter = recent_chapters[0].sequence if recent_chapters else 0
         next_chapter = current_chapter + 1
 
-        # Build recent chapter summaries (reverse to chronological order)
-        recent_summaries = ""
-        if recent_chapters:
-            for ch in reversed(recent_chapters):
+        # Summaries for older chapters (skip the latest — it gets full text)
+        older_summaries = ""
+        if len(recent_chapters) > 1:
+            for ch in reversed(recent_chapters[1:]):
                 if ch.summary:
-                    recent_summaries += f"- **Ch.{ch.sequence}**: {ch.summary[:300]}{'...' if len(ch.summary) > 300 else ''}\n"
+                    older_summaries += f"- **Ch.{ch.sequence}**: {ch.summary[:300]}{'...' if len(ch.summary) > 300 else ''}\n"
 
-        last_summary = recent_chapters[0].summary if recent_chapters and recent_chapters[0].summary else "No previous chapter."
+        # Last chapter's full narrative prose (strip trailing JSON metadata)
+        last_chapter_prose = ""
+        last_summary = "No previous chapter."
+        if recent_chapters:
+            last_summary = recent_chapters[0].summary or "No summary available."
+            raw = recent_chapters[0].text or ""
+            # Strip the ```json ... ``` metadata block at the end
+            json_marker = raw.rfind("```json")
+            if json_marker != -1:
+                last_chapter_prose = raw[:json_marker].rstrip()
+            else:
+                last_chapter_prose = raw.rstrip()
 
         # Extract last chapter's JSON metadata for Archivist
         last_chapter_metadata = ""
@@ -180,11 +191,13 @@ STORY STATE (from World Bible):
                          NARRATIVE CONTEXT (Use for continuity)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-**RECENT CHAPTER SUMMARIES:**
-{recent_summaries if recent_summaries else "This is Chapter 1 - no previous chapters."}
+**OLDER CHAPTER SUMMARIES:**
+{older_summaries if older_summaries else "No older chapters yet."}
 
-**LAST CHAPTER (Ch.{current_chapter}) SUMMARY:**
-{last_summary}
+**LAST CHAPTER (Ch.{current_chapter}) — FULL TEXT:**
+{last_chapter_prose if last_chapter_prose else "No previous chapter."}
+
+**LAST CHAPTER SUMMARY:** {last_summary}
 {story_context}
 {metadata_section}
 {bible_state_section}

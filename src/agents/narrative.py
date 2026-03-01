@@ -1,5 +1,4 @@
-import json
-from typing import Dict, Any, List, Optional
+from typing import List
 from google.adk import Agent
 from google.genai import types
 from src.tools.meta_tools import MetaTools
@@ -36,50 +35,11 @@ async def create_storyteller(story_id: str, model_name: str = None, universes: L
     setup_metadata = await get_setup_metadata(story_id)
     metadata_section = generate_storyteller_metadata_section(setup_metadata)
 
-    # Dynamic injection of forbidden knowledge and protected characters from Bible
-    forbidden_knowledge_section = ""
-    protected_characters_section = ""
-    try:
-        from src.database import AsyncSessionLocal
-        from sqlalchemy import select as sa_select
-        from src.models import WorldBible
-        async with AsyncSessionLocal() as db:
-            stmt = sa_select(WorldBible).where(WorldBible.story_id == story_id)
-            result = await db.execute(stmt)
-            bible_row = result.scalar_one_or_none()
-            if bible_row and bible_row.content:
-                kb = bible_row.content.get("knowledge_boundaries", {})
-                forbidden_list = kb.get("meta_knowledge_forbidden", [])
-                if forbidden_list:
-                    items = "\n".join(f'   - "{item}"' for item in forbidden_list[:20])
-                    forbidden_knowledge_section = (
-                        "\n   **THIS STORY'S FORBIDDEN KNOWLEDGE** (from World Bible):\n"
-                        f"{items}\n"
-                        "   NO character may reference these concepts unless canonically discovered in-story."
-                    )
-
-                cci = bible_row.content.get("canon_character_integrity", {})
-                protected = cci.get("protected_characters", [])
-                if protected:
-                    names = ", ".join(
-                        p.get("name", str(p)) if isinstance(p, dict) else str(p)
-                        for p in protected
-                    )
-                    protected_characters_section = (
-                        f"\n   **PROTECTED CHARACTERS** (anti-Worfing): {names}\n"
-                        "   These characters MUST meet their minimum_competence. Check canon_character_integrity."
-                    )
-                jobber_rules = cci.get("jobber_prevention_rules", [])
-                if jobber_rules:
-                    rules_text = "\n".join(f"   - {r}" for r in jobber_rules)
-                    protected_characters_section += f"\n   **JOBBER PREVENTION RULES:**\n{rules_text}"
-    except Exception:
-        forbidden_knowledge_section = (
-            "\n   Check `knowledge_boundaries.meta_knowledge_forbidden` for forbidden concepts."
-        )
-        protected_characters_section = (
-            "\n   Check `canon_character_integrity.protected_characters` for anti-Worfing rules."
-        )
+    # Fix 3: FK and protected-character data is now injected dynamically via
+    # before_storyteller_model_callback enforcement blocks (rebuilt every request
+    # with fresh DB data). The static copy previously read here at agent creation
+    # was stale (never refreshed during a game session) and conflicted with the
+    # dynamic blocks.
 
     return Agent(
         name="storyteller",
@@ -125,6 +85,9 @@ Timeline Context: {deviation}
    - **TIMELINE ENFORCEMENT** → Pressure-scored events with MANDATORY/HIGH/MEDIUM tiers
    - **POWER SYSTEM ENFORCEMENT** → Per-source techniques, strain, canon templates, scaling rules
    - **PROTECTED CHARACTERS** → Anti-Worfing rules with minimum competence levels
+   - **PLAYER DIRECTIVES** → Explicit player instructions extracted from free-text choices.
+     These are HARD CONSTRAINTS — treat them with the same authority as canon rules.
+     Violating a player directive is as serious as breaking forbidden knowledge.
    These blocks are appended to EVERY request. Trust them as your primary constraint source.
    Items marked **[!!!]** are NON-NEGOTIABLE and MUST appear in this chapter.
    Items with **[SYSTEM WARNING]** require you to take action (call discover_forbidden_knowledge()
@@ -327,7 +290,7 @@ trigger_research("Winslow High School Brockton Bay layout students")
    The system injects the FORBIDDEN KNOWLEDGE list into every request. You have NO excuse
    for violating it. This injected list is your FIRST LINE OF DEFENSE.
    Check `knowledge_boundaries.meta_knowledge_forbidden` via `read_bible("knowledge_boundaries")`.
-{forbidden_knowledge_section}
+   [Dynamic FK data is injected via enforcement blocks in every request — see SYSTEM-INJECTED DATA above]
 
    VERIFY using `check_knowledge_compliance(character_name, concept)` — but the injected
    FORBIDDEN KNOWLEDGE list is your first check. Use the tool as your SECOND verification
@@ -357,7 +320,7 @@ trigger_research("Winslow High School Brockton Bay layout students")
      - "knows" → OK as fact; "suspects" → OK as speculation only; "doesnt_know" → CANNOT MENTION
 
    **ANTI-WORFING ENFORCEMENT:**
-{protected_characters_section}
+   [Dynamic anti-Worfing data is injected via enforcement blocks in every request — see SYSTEM-INJECTED DATA above]
    Before writing combat involving protected characters, call `get_character_profile(name)`
    and check their `integrity_rules` for minimum_competence and anti_worf_notes.
 
