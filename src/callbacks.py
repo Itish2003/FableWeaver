@@ -182,13 +182,12 @@ async def tool_error_fallback(
 # 4. Shared session history trimming (preserves function-call pairs)
 # ---------------------------------------------------------------------------
 
-def _trim_to_current_turn(contents: list, agent_label: str) -> list:
-    """Trim session history to the current turn while preserving function-call pairs.
+def _trim_to_current_turn(contents: list, agent_label: str, keep_turns: int = 1) -> list:
+    """Trim session history keeping the last *keep_turns* real user turns.
 
-    The ADK session accumulates every prior agent's turns.  For both the
-    Archivist and Storyteller the current turn's user message already
-    contains everything needed (Bible state, chapter context, player choice),
-    and enforcement blocks are rebuilt fresh by the model callback.
+    The ADK session accumulates every prior agent's turns.  For the
+    Archivist only the current turn is needed, but the Storyteller benefits
+    from seeing recent game turns for narrative continuity.
 
     Key invariant: Gemini requires that (1) conversations start with a
     ``user`` turn, and (2) every ``function_call`` model turn is immediately
@@ -200,18 +199,25 @@ def _trim_to_current_turn(contents: list, agent_label: str) -> list:
     actual user input, producing a trimmed list that starts with a ``model``
     turn → 400 INVALID_ARGUMENT from Gemini.
 
-    We fix this by scanning for the last user message that contains actual
-    **text** (not just ``function_response`` parts), then keeping everything
-    from that point onward.  A post-trim validation strips any orphaned
-    ``function_call``/``function_response`` pairs that slipped through.
+    We fix this by scanning backwards for real user messages (containing
+    actual **text**, not just ``function_response`` parts), counting up to
+    *keep_turns*, and keeping everything from that point onward.  A post-trim
+    validation strips any orphaned ``function_call``/``function_response``
+    pairs that slipped through.
+
+    Args:
+        contents: The session history list.
+        agent_label: Label for log messages.
+        keep_turns: Number of real user turns to preserve (default 1).
     """
     if not contents or len(contents) <= 2:
         return contents
 
     original_count = len(contents)
 
-    # Find the last REAL user message — one with text, not just function_response.
-    last_user_idx = None
+    # Find the Nth-from-last REAL user message (where N = keep_turns).
+    trim_idx = None
+    real_count = 0
     for i in range(len(contents) - 1, -1, -1):
         msg = contents[i]
         if getattr(msg, "role", None) != "user":
@@ -223,13 +229,15 @@ def _trim_to_current_turn(contents: list, agent_label: str) -> list:
             if getattr(p, "function_response", None) is None
         )
         if has_real_text:
-            last_user_idx = i
-            break
+            real_count += 1
+            trim_idx = i
+            if real_count >= keep_turns:
+                break
 
-    if last_user_idx is None or last_user_idx == 0:
+    if trim_idx is None or trim_idx == 0:
         return contents
 
-    trimmed = contents[last_user_idx:]
+    trimmed = contents[trim_idx:]
 
     # Post-trim validation: strip orphaned function_call/function_response pairs
     trimmed = _strip_orphaned_fc_pairs(trimmed)
@@ -321,6 +329,9 @@ async def before_storyteller_model_callback(callback_context, llm_request):
     knowledge, character secrets, upcoming canon events, power system, etc.
     """
     # --- Trim accumulated session history (preserves function-call pairs) ---
+    # keep_turns=1: narrative continuity is handled by explicit chapter
+    # context injected in choice.py (last chapter full text + summaries),
+    # not raw session history which is bloated with Bible JSON dumps.
     llm_request.contents = _trim_to_current_turn(
         llm_request.contents, "Storyteller"
     )
@@ -368,6 +379,7 @@ async def before_storyteller_model_callback(callback_context, llm_request):
 
     # --- Build instruction blocks from Bible ---
     instructions: list[str] = [
+        _build_meta_narration_firewall_block(),  # Fix 1: highest-attention position
         f"Current chapter number: {next_chapter}",
         f"Word target: {min_words}-{max_words} words",
     ]
@@ -449,16 +461,65 @@ async def before_storyteller_model_callback(callback_context, llm_request):
                 _build_previous_qa_block(last_qa, last_questions)
             )
 
+    # 9. PLAYER DIRECTIVES — extract & elevate player instructions from choice text
+    player_choice = _extract_player_choice_text(llm_request.contents)
+    if player_choice:
+        instructions.append(
+            _build_player_directives_block(player_choice)
+        )
+
     # Filter out empty strings (blocks that had no data)
     instructions = [blk for blk in instructions if blk]
 
-    llm_request.append_instructions(instructions)
+    # Fix 2: Prepend enforcement blocks BEFORE the static instruction so they
+    # land in the highest-attention zone of the system instruction, instead of
+    # being buried after the ~29K static instruction via append_instructions().
+    enforcement_text = "\n\n".join(instructions)
+    if enforcement_text:
+        si = llm_request.config.system_instruction or ""
+        llm_request.config.system_instruction = enforcement_text + "\n\n" + si
+
     return None  # never skip the model call
 
 
 # ---------------------------------------------------------------------------
 # 4a. Enforcement block builders (pure functions, no I/O)
 # ---------------------------------------------------------------------------
+
+
+def _build_meta_narration_firewall_block() -> str:
+    """Build the META-NARRATION FIREWALL enforcement block.
+
+    Bans system-internal terms from appearing in generated prose, dialogue,
+    inner monologue, or narration. These terms exist only in the instruction
+    context (Bible JSON keys, enforcement block headers, etc.) and must never
+    leak into the story the reader sees.
+    """
+    banned_terms = [
+        "canon", "divergence", "meta-knowledge", "world bible",
+        "knowledge_boundaries", "anti-worf", "worfing",
+        "enforcement block", "system instruction", "power_origins",
+        "forbidden knowledge list", "pressure score",
+        "narrative flexibility",
+    ]
+    term_list = "\n".join(f"  - {term}" for term in banned_terms)
+    return (
+        "\n╔══════════════════════════════════════════════════════════════╗\n"
+        "║          META-NARRATION FIREWALL — ABSOLUTE BAN             ║\n"
+        "╚══════════════════════════════════════════════════════════════╝\n"
+        "\n"
+        "The following terms are SYSTEM-INTERNAL. They must NEVER appear in\n"
+        "generated prose, dialogue, inner monologue, or narration:\n"
+        f"{term_list}\n"
+        "\n"
+        "These words exist only in your instructions. If a concept needs\n"
+        "expression in-story, use the story's own vocabulary (e.g., \"the\n"
+        "official records\" instead of \"canon\", \"the discrepancy\" instead\n"
+        "of \"divergence\").\n"
+        "\n"
+        "VIOLATION = automatic chapter rejection."
+    )
+
 
 _MAX_FORBIDDEN = 30
 _MAX_PER_CHARACTER_BLOCKS = 8
@@ -979,7 +1040,7 @@ def _build_timeline_enforcement_block(bible: dict, chapter_count: int) -> str:
     - Uses imperative mandate language
     """
     meta = bible.get("meta", {})
-    current_date_str = meta.get("current_story_date", "")
+    current_date_str = meta.get("current_story_date", "") or meta.get("story_start_date", "")
     current_dt_parsed = _parse_story_date(current_date_str)
 
     protagonist_name = bible.get("character_sheet", {}).get("name", "")
@@ -1974,7 +2035,7 @@ async def _maybe_enrich_event_playbooks(
     if not all_events:
         return False
 
-    current_date_str = meta.get("current_story_date", "")
+    current_date_str = meta.get("current_story_date", "") or meta.get("story_start_date", "")
     current_dt_parsed = _parse_story_date(current_date_str)
     protagonist_name = bible_content.get("character_sheet", {}).get("name", "")
     story_start_dt = _parse_story_date(meta.get("story_start_date", ""))
@@ -1998,7 +2059,7 @@ async def _maybe_enrich_event_playbooks(
         pressure = _compute_pressure_score(
             evt, current_dt_parsed, protagonist_name, all_events,
         )
-        if pressure["pressure_score"] < 5.0 and not pressure["is_overdue"]:
+        if pressure["pressure_score"] < 3.0 and not pressure["is_overdue"]:
             continue
 
         candidates.append((evt, pressure))
@@ -2084,7 +2145,7 @@ def _build_event_playbook_block(bible: dict, chapter_count: int) -> str:
 
     Extracts event_playbook data from canon_timeline events that are:
     - Not yet past (status != occurred/modified/prevented)
-    - MANDATORY or HIGH priority (pressure >= 5.0)
+    - MEDIUM+ priority (pressure >= 3.0), or the nearest upcoming event as fallback
     - Have an event_playbook field populated
 
     Injects narrative beats, character behaviors, emotional arc, and key
@@ -2097,7 +2158,7 @@ def _build_event_playbook_block(bible: dict, chapter_count: int) -> str:
         return ""
 
     meta = bible.get("meta", {})
-    current_date_str = meta.get("current_story_date", "")
+    current_date_str = meta.get("current_story_date", "") or meta.get("story_start_date", "")
     current_dt_parsed = _parse_story_date(current_date_str)
     protagonist_name = bible.get("character_sheet", {}).get("name", "")
     story_start_dt = _parse_story_date(meta.get("story_start_date", ""))
@@ -2117,9 +2178,27 @@ def _build_event_playbook_block(bible: dict, chapter_count: int) -> str:
         pressure = _compute_pressure_score(
             evt, current_dt_parsed, protagonist_name, all_events,
         )
-        # Only include MANDATORY (>= 7.0) or HIGH (>= 5.0) pressure events
-        if pressure["pressure_score"] >= 5.0 or pressure["is_overdue"]:
+        # Include MEDIUM+ pressure events (>= 3.0) for scene-level reference
+        if pressure["pressure_score"] >= 3.0 or pressure["is_overdue"]:
             candidates.append((evt, pressure))
+
+    # Guarantee: always include the nearest upcoming event with a playbook
+    # even if its pressure is below threshold (prevents dead zone for foreshadowing)
+    if not candidates:
+        nearest = None
+        for evt in all_events:
+            status = evt.get("status", "")
+            if _is_past_event(status) or _is_pre_story_event(evt, story_start_dt):
+                continue
+            playbook = evt.get("event_playbook")
+            if not playbook or not isinstance(playbook, dict):
+                continue
+            evt_dt = _parse_story_date(evt.get("date", ""))
+            if nearest is None or (evt_dt and (nearest[2] is None or evt_dt < nearest[2])):
+                pressure = _compute_pressure_score(evt, current_dt_parsed, protagonist_name, all_events)
+                nearest = (evt, pressure, evt_dt)
+        if nearest:
+            candidates.append((nearest[0], nearest[1]))
 
     if not candidates:
         return ""
@@ -2182,5 +2261,136 @@ def _build_event_playbook_block(bible: dict, chapter_count: int) -> str:
         "\nUse this as your reference. You may diverge from canon beats, but "
         "divergences must be justified by prior story events or player choices."
     )
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Player directives extraction & enforcement
+# ---------------------------------------------------------------------------
+
+# Patterns that signal the player is giving a directive (not just a narrative choice)
+_DIRECTIVE_PATTERNS: list[re.Pattern] = [
+    # Negations — "don't", "do not", "never", "stop", "no more"
+    re.compile(r"(?:don'?t|do\s+not|never|stop|no\s+more|avoid|shouldn'?t)\s+.{8,}", re.IGNORECASE),
+    # Imperatives — "make sure", "keep in mind", "remember that", "ensure"
+    re.compile(r"(?:make\s+sure|keep\s+in\s+mind|remember\s+that|ensure|please\s+(?:make|keep|don'?t|do|ensure))\s+.{8,}", re.IGNORECASE),
+    # Ability assertions — "he has", "she has", "he can", "she can", "he should", "is capable"
+    re.compile(r"(?:he|she|they|the\s+protagonist|(?:my|the)\s+(?:character|mc|oc))\s+(?:has|have|can|could|should|is\s+(?:capable|able|supposed))\s+.{5,}", re.IGNORECASE),
+    # Why-questions as critique — "why doesn't he", "why isn't she"
+    re.compile(r"why\s+(?:doesn'?t|isn'?t|can'?t|won'?t|don'?t)\s+.{5,}", re.IGNORECASE),
+    # Direct instructions — "use X", "show X", "include X", "write X"
+    re.compile(r"(?:^|\.\s+)(?:use|show|include|write|portray|depict|have\s+(?:him|her|them))\s+.{5,}", re.IGNORECASE),
+    # Corrections — "actually", "in fact", "that's wrong"
+    re.compile(r"(?:actually|in\s+fact|that'?s\s+(?:wrong|incorrect|not\s+right))\s*.{5,}", re.IGNORECASE),
+    # Tone/style — "more X", "less X", "too much X"
+    re.compile(r"(?:more|less|too\s+much|too\s+many|not\s+enough)\s+\w+.{3,}", re.IGNORECASE),
+]
+
+# Minimum length to consider a choice as potentially containing directives
+_MIN_DIRECTIVE_CHOICE_LEN = 40
+
+
+def _extract_player_choice_text(contents: list) -> str:
+    """Extract the raw player choice text from the PLAYER ACTION section of input_text.
+
+    The last user message in ``contents`` is the ``input_text`` built by
+    ``choice.py``.  We extract just the PLAYER ACTION section, which
+    contains the player's choice (free-text or pre-built option).
+    """
+    # Walk backwards to find last user message with text
+    for msg in reversed(contents):
+        if getattr(msg, "role", None) != "user":
+            continue
+        parts = getattr(msg, "parts", None) or []
+        for part in parts:
+            text = getattr(part, "text", None)
+            if not text:
+                continue
+            # Extract the PLAYER ACTION section.
+            # Format:  ═══...PLAYER ACTION...═══\n\n<choice text>\n\n═══...CHAPTER INSTRUCTIONS
+            marker_start = text.find("PLAYER ACTION")
+            if marker_start == -1:
+                continue
+            # Skip past the "PLAYER ACTION" line and its bottom border
+            after_header = text[marker_start:]
+            # Find the second newline-after-═══ (bottom border of the header)
+            border_end = after_header.find("═\n")
+            if border_end == -1:
+                continue
+            section = after_header[border_end + 2:]
+            # Find the next section boundary (═══ line before CHAPTER INSTRUCTIONS)
+            next_section = section.find("═══")
+            if next_section != -1:
+                choice_text = section[:next_section].strip()
+            else:
+                choice_text = section.strip()
+            return choice_text
+    return ""
+
+
+def _build_player_directives_block(player_choice: str) -> str:
+    """Parse player choice text for directive-like language and build an enforcement block.
+
+    Short pre-built choices (e.g. "Choice 1: Go to the market") are
+    narrative selections, not directives. This function only fires when
+    the player writes substantive free-text containing instructions,
+    corrections, or constraints.
+    """
+    if len(player_choice) < _MIN_DIRECTIVE_CHOICE_LEN:
+        return ""
+
+    # Split into sentences for granular matching
+    sentences = re.split(r'(?<=[.!?])\s+', player_choice)
+
+    directives: list[str] = []
+    seen_lower: set[str] = set()
+
+    # First pass: extract directives from individual sentences
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if len(sentence) < 15:
+            continue
+        for pattern in _DIRECTIVE_PATTERNS:
+            if pattern.search(sentence):
+                key = sentence.lower()[:80]
+                if key not in seen_lower:
+                    seen_lower.add(key)
+                    directives.append(sentence)
+                break
+
+    # If no individual sentences matched but the full text is long enough,
+    # try the full text as one block (covers run-on or unpunctuated directives)
+    if not directives and len(sentences) > 1:
+        for pattern in _DIRECTIVE_PATTERNS:
+            if pattern.search(player_choice):
+                directives.append(player_choice.strip())
+                break
+
+    if not directives:
+        return ""
+
+    lines = [
+        "\n╔══════════════════════════════════════════════════════════════╗",
+        "║       PLAYER DIRECTIVES — MANDATORY COMPLIANCE              ║",
+        "╚══════════════════════════════════════════════════════════════╝",
+        "",
+        "The player has provided EXPLICIT INSTRUCTIONS in their choice text.",
+        "These are HARD CONSTRAINTS with the same authority as canon rules.",
+        "Violating a player directive is as serious as breaking forbidden knowledge.",
+        "",
+    ]
+
+    for i, directive in enumerate(directives, 1):
+        lines.append(f"  [{i}] {directive}")
+
+    lines.append("")
+    lines.append("ENFORCEMENT RULES:")
+    lines.append("• Each directive above MUST be reflected in the generated chapter.")
+    lines.append("• Negations (\"don't\", \"never\", \"stop\") are ABSOLUTE PROHIBITIONS.")
+    lines.append("• Ability assertions (\"he can\", \"he has\") are CANON FACTS for this story.")
+    lines.append("• Style directives (\"more X\", \"less X\") override default writing tendencies.")
+    lines.append("• If a directive conflicts with a canon constraint, PRIORITIZE the player directive")
+    lines.append("  (the player is the ultimate authority on their story's direction).")
 
     return "\n".join(lines)
